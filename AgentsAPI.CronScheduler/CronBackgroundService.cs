@@ -23,7 +23,8 @@ namespace AgentsAPI.CronScheduler
             _logger = logger;
 
             // read configuration from environment variables for easier Windows Scheduler runs
-            _cronExpression = Environment.GetEnvironmentVariable("CRON_EXPRESSION") ?? "*/1 * * * *";
+            // default to once per day at midnight UTC
+            _cronExpression = Environment.GetEnvironmentVariable("CRON_EXPRESSION") ?? "0 0 * * *";
             var queriesRaw = Environment.GetEnvironmentVariable("CRAWL_QUERIES") ?? "example";
             _queries = queriesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         }
@@ -48,6 +49,7 @@ namespace AgentsAPI.CronScheduler
                 {
                     try
                     {
+
                         await Task.Delay(delay, stoppingToken);
                     }
                     catch (OperationCanceledException)
@@ -61,7 +63,11 @@ namespace AgentsAPI.CronScheduler
                 using var scope = _provider.CreateScope();
 
                 var crawler = scope.ServiceProvider.GetRequiredService<AgentsAPI.Agents.ICrawlerAgent>();
+                // Also get host environment to locate shared files
+                var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+                var solutionRoot = env.ContentRootPath;
 
+                // Run configured search queries (if any)
                 foreach (var q in _queries)
                 {
                     try
@@ -77,6 +83,35 @@ namespace AgentsAPI.CronScheduler
                     {
                         _logger.LogError(ex, "Error executing query '{Query}'", q);
                     }
+                }
+
+                // Additionally, once per scheduled run, read job sites from shared files and crawl them.
+                try
+                {
+                    await foreach (var crawlTask in ScrappingJobs.ReadJobSitesFromShared(solutionRoot).WithCancellation(stoppingToken))
+                    {
+                        try
+                        {
+                            // ReadJobSitesFromShared returns tasks; ensure they complete
+                            await crawlTask;
+                        }
+                        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                        {
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error crawling job site");
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    // shutting down
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error reading job sites from shared files");
                 }
             }
 

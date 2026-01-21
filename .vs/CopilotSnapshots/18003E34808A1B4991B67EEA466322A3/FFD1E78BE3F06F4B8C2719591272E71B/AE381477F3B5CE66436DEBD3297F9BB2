@@ -1,0 +1,105 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Threading;
+using Cronos;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+var builder = Host.CreateDefaultBuilder(args)
+    .ConfigureLogging(logging =>
+    {
+        logging.ClearProviders();
+        logging.AddConsole();
+    })
+    .ConfigureServices((ctx, services) =>
+    {
+        // register CrawlerAgent from the agents project
+        services.AddSingleton<AgentsAPI.Agents.CrawlerAgent>();
+        services.AddSingleton<AgentsAPI.Agents.ICrawlerAgent>(sp => sp.GetRequiredService<AgentsAPI.Agents.CrawlerAgent>());
+        services.AddHostedService(sp => sp.GetRequiredService<AgentsAPI.Agents.CrawlerAgent>());
+
+        services.AddSingleton<SchedulerService>();
+    })
+    .Build();
+
+using var cts = new CancellationTokenSource();
+var scheduler = builder.Services.GetRequiredService<SchedulerService>();
+
+Console.CancelKeyPress += (s, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+};
+
+await scheduler.RunAsync(args, cts.Token);
+
+public class SchedulerService
+{
+    private readonly IServiceProvider _provider;
+    private readonly ILogger<SchedulerService> _logger;
+
+    public SchedulerService(IServiceProvider provider, ILogger<SchedulerService> logger)
+    {
+        _provider = provider;
+        _logger = logger;
+    }
+
+    public async Task RunAsync(string[] args, CancellationToken cancellationToken)
+    {
+        // read cron expression and queries from args or environment
+        var cronExpr = args.FirstOrDefault() ?? Environment.GetEnvironmentVariable("CRON_EXPRESSION") ?? "*/1 * * * *";
+        var queriesRaw = args.Length > 1 ? args[1] : Environment.GetEnvironmentVariable("CRAWL_QUERIES") ?? "example";
+        var queries = queriesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+        _logger.LogInformation("Starting SchedulerService with cron '{Cron}' and queries: {Queries}", cronExpr, queries);
+
+        var cron = CronExpression.Parse(cronExpr, CronFormat.Standard);
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var next = cron.GetNextOccurrence(DateTimeOffset.UtcNow);
+            if (!next.HasValue)
+                break;
+
+            var delay = next.Value - DateTimeOffset.UtcNow;
+            if (delay.TotalMilliseconds > 0)
+            {
+                try
+                {
+                    await Task.Delay(delay, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+            }
+
+            _logger.LogInformation("Triggering crawl at {Time}", DateTimeOffset.Now);
+
+            using var scope = _provider.CreateScope();
+            var crawler = scope.ServiceProvider.GetRequiredService<AgentsAPI.Agents.ICrawlerAgent>();
+
+            foreach (var q in queries)
+            {
+                try
+                {
+                    var res = await crawler.SearchAsync(q, cancellationToken);
+                    _logger.LogInformation("Results for '{Query}':\n{Results}", q, res);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error executing query '{Query}'", q);
+                }
+            }
+        }
+
+        _logger.LogInformation("SchedulerService stopping.");
+    }
+}

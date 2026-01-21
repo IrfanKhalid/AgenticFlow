@@ -1,0 +1,86 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Cronos;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace AgentsAPI.CronScheduler
+{
+    public class CronBackgroundService : BackgroundService
+    {
+        private readonly IServiceProvider _provider;
+        private readonly ILogger<CronBackgroundService> _logger;
+        private readonly string _cronExpression;
+        private readonly List<string> _queries;
+
+        public CronBackgroundService(IServiceProvider provider, ILogger<CronBackgroundService> logger)
+        {
+            _provider = provider;
+            _logger = logger;
+
+            // read configuration from environment variables for easier Windows Scheduler runs
+            _cronExpression = Environment.GetEnvironmentVariable("CRON_EXPRESSION") ?? "*/1 * * * *";
+            var queriesRaw = Environment.GetEnvironmentVariable("CRAWL_QUERIES") ?? "example";
+            _queries = queriesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("CronBackgroundService starting with cron '{Cron}' and queries: {Queries}", _cronExpression, _queries);
+
+            var cron = CronExpression.Parse(_cronExpression, CronFormat.Standard);
+
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                var next = cron.GetNextOccurrence(DateTimeOffset.UtcNow);
+                if (!next.HasValue)
+                {
+                    _logger.LogInformation("No next occurrence from cron expression. Stopping service.");
+                    break;
+                }
+
+                var delay = next.Value - DateTimeOffset.UtcNow;
+                if (delay.TotalMilliseconds > 0)
+                {
+                    try
+                    {
+                        await Task.Delay(delay, stoppingToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                }
+
+                _logger.LogInformation("Triggering crawl at {Time}", DateTimeOffset.Now);
+
+                using var scope = (IServiceScope)_provider.GetService(typeof(IServiceScopeFactory))!.GetType()
+                    .GetMethod("CreateScope")!.Invoke(_provider.GetService(typeof(IServiceScopeFactory))!, null)!;
+
+                var crawler = (AgentsAPI.Agents.ICrawlerAgent)scope.ServiceProvider.GetRequiredService(typeof(AgentsAPI.Agents.ICrawlerAgent));
+
+                foreach (var q in _queries)
+                {
+                    try
+                    {
+                        var res = await crawler.SearchAsync(q, stoppingToken);
+                        _logger.LogInformation("Results for '{Query}':\n{Results}", q, res);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error executing query '{Query}'", q);
+                    }
+                }
+            }
+
+            _logger.LogInformation("CronBackgroundService stopping.");
+        }
+    }
+}

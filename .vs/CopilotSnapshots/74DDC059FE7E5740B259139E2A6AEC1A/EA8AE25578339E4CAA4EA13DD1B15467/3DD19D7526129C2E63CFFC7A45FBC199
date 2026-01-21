@@ -1,0 +1,24 @@
+﻿var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddSwaggerGen();
+builder.Services.AddControllers();
+
+builder.Services.AddScoped<AgentsAPI.DataAccess.Repositories.IItemRepository, AgentsAPI.DataAccess.Repositories.ItemRepository>();
+builder.Services.AddScoped<AgentsAPI.BusinessLogic.Services.IItemService, AgentsAPI.BusinessLogic.Services.ItemService>();
+builder.Services.AddScoped<AgentsAPI.BusinessLogic.Services.ISearchService, AgentsAPI.BusinessLogic.Services.SearchService>();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+app.MapControllers();
+
+app.Run();

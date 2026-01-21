@@ -1,0 +1,35 @@
+﻿using Microsoft.Playwright;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+namespace AgentsAPI.BusinessLogic.Services
+{
+    public class SearchService : ISearchService
+    {
+        public async Task<string> SearchWithGoogleAsync(string query)
+        {
+            using var playwright = await Playwright.CreateAsync();
+            await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = false });
+            var page = await browser.NewPageAsync();
+
+            await page.GotoAsync("https://www.google.com");
+            await page.FillAsync("textarea[name='q']", query);
+            await page.PressAsync("textarea[name='q']", "Enter");
+            await page.WaitForLoadStateAsync();
+
+            // Extract search results titles
+            var results = await page.QuerySelectorAllAsync("h3");
+            var titles = new List<string>();
+            foreach (var result in results)
+            {
+                var text = await result.InnerTextAsync();
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    titles.Add(text);
+                }
+            }
+
+            return string.Join("\n", titles);
+        }
+    }
+}

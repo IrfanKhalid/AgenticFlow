@@ -1,0 +1,6 @@
+@AgentsAPI.WebAPI_HostAddress = http://localhost:5093
+
+GET {{AgentsAPI.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

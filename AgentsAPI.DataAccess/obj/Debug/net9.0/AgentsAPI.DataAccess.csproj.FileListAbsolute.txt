@@ -1,0 +1,12 @@
+C:\Irfan\Work\Deep Learning\Agentic Learning\agentsAPI\AgentsAPI.DataAccess\bin\Debug\net9.0\AgentsAPI.DataAccess.deps.json
+C:\Irfan\Work\Deep Learning\Agentic Learning\agentsAPI\AgentsAPI.DataAccess\bin\Debug\net9.0\AgentsAPI.DataAccess.dll
+C:\Irfan\Work\Deep Learning\Agentic Learning\agentsAPI\AgentsAPI.DataAccess\bin\Debug\net9.0\AgentsAPI.DataAccess.pdb
+C:\Irfan\Work\Deep Learning\Agentic Learning\agentsAPI\AgentsAPI.DataAccess\obj\Debug\net9.0\AgentsAPI.DataAccess.GeneratedMSBuildEditorConfig.editorconfig
+C:\Irfan\Work\Deep Learning\Agentic Learning\agentsAPI\AgentsAPI.DataAccess\obj\Debug\net9.0\AgentsAPI.DataAccess.AssemblyInfoInputs.cache
+C:\Irfan\Work\Deep Learning\Agentic Learning\agentsAPI\AgentsAPI.DataAccess\obj\Debug\net9.0\AgentsAPI.DataAccess.AssemblyInfo.cs
+C:\Irfan\Work\Deep Learning\Agentic Learning\agentsAPI\AgentsAPI.DataAccess\obj\Debug\net9.0\AgentsAPI.DataAccess.csproj.CoreCompileInputs.cache
+C:\Irfan\Work\Deep Learning\Agentic Learning\agentsAPI\AgentsAPI.DataAccess\obj\Debug\net9.0\AgentsAPI.DataAccess.sourcelink.json
+C:\Irfan\Work\Deep Learning\Agentic Learning\agentsAPI\AgentsAPI.DataAccess\obj\Debug\net9.0\AgentsAPI.DataAccess.dll
+C:\Irfan\Work\Deep Learning\Agentic Learning\agentsAPI\AgentsAPI.DataAccess\obj\Debug\net9.0\refint\AgentsAPI.DataAccess.dll
+C:\Irfan\Work\Deep Learning\Agentic Learning\agentsAPI\AgentsAPI.DataAccess\obj\Debug\net9.0\AgentsAPI.DataAccess.pdb
+C:\Irfan\Work\Deep Learning\Agentic Learning\agentsAPI\AgentsAPI.DataAccess\obj\Debug\net9.0\ref\AgentsAPI.DataAccess.dll

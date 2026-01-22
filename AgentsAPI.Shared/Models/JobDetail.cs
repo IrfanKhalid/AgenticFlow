@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace AgentsAPI.Shared.Models
 {
     public class JobDetail

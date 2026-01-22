@@ -2,6 +2,8 @@ using System;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Playwright;
+using BrowserTypeLaunchOptions = Microsoft.Playwright.BrowserTypeLaunchOptions;
 
 var builder = Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging =>
@@ -19,10 +21,10 @@ var builder = Host.CreateDefaultBuilder(args)
         // register the cron background service that will run scheduled crawls
         services.AddHostedService<AgentsAPI.CronScheduler.CronBackgroundService>();
         // register the scraper project types
-        services.AddSingleton<Microsoft.Playwright.IBrowser>(sp => {
-            // create Playwright and browser once per process
+        services.AddSingleton<IBrowser>(sp => {
+            // initialize Playwright/browser in a hosted initializer to avoid blocking
             var playwright = Microsoft.Playwright.Playwright.CreateAsync().GetAwaiter().GetResult();
-            var browser = playwright.Chromium.LaunchAsync(new Microsoft.Playwright.BrowserTypeLaunchOptions{Headless=true}).GetAwaiter().GetResult();
+            var browser = playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions{Headless=true}).GetAwaiter().GetResult();
             return browser;
         });
     })

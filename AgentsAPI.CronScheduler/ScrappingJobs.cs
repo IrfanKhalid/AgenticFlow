@@ -10,13 +10,14 @@ using System.Net.Http;
 using System.Xml.Linq;
 using System.Text.RegularExpressions;
 using AgentsAPI.Scrapers.Crawlers;
+using AgentsAPI.Shared.Models;
 
 namespace AgentsAPI.CronScheduler
 {
     public static class ScrappingJobs
     {
         // Reads the CSV from the Shared project and returns the list of websites (Website column)
-        public static async IAsyncEnumerable<Task> ReadJobSitesFromShared(string solutionRoot)
+        public static async IAsyncEnumerable<string> ReadJobSitesFromShared(string solutionRoot)
         {
             // Path relative to solution root
             var relativePath = Path.Combine("AgentsAPI.Shared", "Files", "Job Sites.csv");
@@ -30,20 +31,13 @@ namespace AgentsAPI.CronScheduler
 
             // Read header and records
             var records = csv.GetRecords<dynamic>();
-            using var playwright = await Playwright.CreateAsync();
-            await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = false });
-
-            var context = await browser.NewContextAsync();
             foreach (var rec in records)
             {
                 var dict = rec as IDictionary<string, object>;
                 if (dict != null && dict.ContainsKey("Website") && dict["Website"] != null)
                 {
                     var site = dict["Website"].ToString()!.Trim();
-                    //var crawlTask = CrawlSitesAsync(site);
-                    var crawlTask = FueledCrawler.CrawlFueledAsync(context);
-                    await crawlTask;
-                    yield return crawlTask;
+                    yield return site;
                 }
             }
         }

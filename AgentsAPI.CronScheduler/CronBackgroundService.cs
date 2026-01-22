@@ -7,6 +7,12 @@ using Cronos;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using AgentsAPI.DataAccess.Repositories;
+using AgentsAPI.DataAccess.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Playwright;
 
 namespace AgentsAPI.CronScheduler
 {
@@ -35,7 +41,7 @@ namespace AgentsAPI.CronScheduler
 
             var cron = CronExpression.Parse(_cronExpression, CronFormat.Standard);
 
-            while (!stoppingToken.IsCancellationRequested || true)
+            while (!stoppingToken.IsCancellationRequested)
             {
                 var next = cron.GetNextOccurrence(DateTime.UtcNow);
                 if (!next.HasValue)
@@ -50,7 +56,7 @@ namespace AgentsAPI.CronScheduler
                     try
                     {
 
-                        //await Task.Delay(delay, stoppingToken);
+                        await Task.Delay(delay, stoppingToken);
                     }
                     catch (OperationCanceledException)
                     {
@@ -67,33 +73,66 @@ namespace AgentsAPI.CronScheduler
                 var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
                 var solutionRoot = env.ContentRootPath;
 
+                // Get DB context options and create dbcontext
+                var configConn = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
+                var connectionString = configConn ?? "Host=localhost;Database=agentsdb;Username=postgres;Password=postgres";
+
+                var optionsBuilder = new DbContextOptionsBuilder<AgentsDbContext>();
+                optionsBuilder.UseNpgsql(connectionString);
+
+                using var dbContext = new AgentsDbContext(optionsBuilder.Options);
+                var jobRepo = new JobRepository(dbContext);
+
                 // Run configured search queries (if any)
-                //foreach (var q in _queries)
-                //{
-                //    try
-                //    {
-                //        var res = await crawler.SearchAsync(q, stoppingToken);
-                //        _logger.LogInformation("Results for '{Query}':\n{Results}", q, res);
-                //    }
-                //    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                //    {
-                //        break;
-                //    }
-                //    catch (Exception ex)
-                //    {
-                //        _logger.LogError(ex, "Error executing query '{Query}'", q);
-                //    }
-                //}
+                foreach (var q in _queries)
+                {
+                    try
+                    {
+                        var res = await crawler.SearchAsync(q, stoppingToken);
+                        _logger.LogInformation("Results for '{Query}':\n{Results}", q, res);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error executing query '{Query}'", q);
+                    }
+                }
 
                 // Additionally, once per scheduled run, read job sites from shared files and crawl them.
                 try
                 {
-                    await foreach (var crawlTask in ScrappingJobs.ReadJobSitesFromShared(solutionRoot).WithCancellation(stoppingToken))
+                    await foreach (var site in ScrappingJobs.ReadJobSitesFromShared(solutionRoot).WithCancellation(stoppingToken))
                     {
                         try
                         {
-                            // ReadJobSitesFromShared returns tasks; ensure they complete
-                            await crawlTask;
+                            if (site.Contains("fueled.com", StringComparison.OrdinalIgnoreCase))
+                            {
+                                // use injected singleton IBrowser to create a context
+                                var browser = scope.ServiceProvider.GetRequiredService<IBrowser>();
+                                await using var context = await browser.NewContextAsync();
+
+                                var jobs = await AgentsAPI.Scrapers.Crawlers.FueledCrawler.CrawlFueledAsync(context);
+
+                                foreach (var job in jobs)
+                                {
+                                    try
+                                    {
+                                        await jobRepo.AddOrUpdateAsync(job);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        _logger.LogError(ex, "Error saving job {ApplyUrl}", job.ApplyUrl);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // fallback generic crawl (not implemented) - use previous CrawlSitesAsync
+                                await ScrappingJobs.CrawlSitesAsync(site);
+                            }
                         }
                         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                         {
@@ -101,7 +140,7 @@ namespace AgentsAPI.CronScheduler
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Error crawling job site");
+                            _logger.LogError(ex, "Error crawling job site {Site}", site);
                         }
                     }
                 }

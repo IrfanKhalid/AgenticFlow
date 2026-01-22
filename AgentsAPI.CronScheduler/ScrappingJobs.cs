@@ -9,6 +9,7 @@ using Microsoft.Playwright;
 using System.Net.Http;
 using System.Xml.Linq;
 using System.Text.RegularExpressions;
+using AgentsAPI.Scrapers.Crawlers;
 
 namespace AgentsAPI.CronScheduler
 {
@@ -29,13 +30,18 @@ namespace AgentsAPI.CronScheduler
 
             // Read header and records
             var records = csv.GetRecords<dynamic>();
+            using var playwright = await Playwright.CreateAsync();
+            await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = false });
+
+            var context = await browser.NewContextAsync();
             foreach (var rec in records)
             {
                 var dict = rec as IDictionary<string, object>;
                 if (dict != null && dict.ContainsKey("Website") && dict["Website"] != null)
                 {
                     var site = dict["Website"].ToString()!.Trim();
-                    var crawlTask = CrawlSitesAsync(site);
+                    //var crawlTask = CrawlSitesAsync(site);
+                    var crawlTask = FueledCrawler.CrawlFueledAsync(context);
                     await crawlTask;
                     yield return crawlTask;
                 }
@@ -102,9 +108,9 @@ namespace AgentsAPI.CronScheduler
                     {
                         var page = await context.NewPageAsync();
                         await page.GotoAsync(url, new PageGotoOptions { WaitUntil = WaitUntilState.Load, Timeout = 30000 });
-                        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+                        //await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
-                        var anchors = await page.QuerySelectorAllAsync("a[href]");
+                        var anchors = await page.QuerySelectorAllAsync("#sitemap__table tbody td.loc a");
                         var count = 0;
                         foreach (var a in anchors)
                         {
@@ -162,7 +168,7 @@ namespace AgentsAPI.CronScheduler
                     {
                         var page = await context.NewPageAsync();
                         await page.GotoAsync(careerUrl, new PageGotoOptions { WaitUntil = WaitUntilState.Load, Timeout = 30000 });
-                        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+                        //await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
                         string description = string.Empty;
 

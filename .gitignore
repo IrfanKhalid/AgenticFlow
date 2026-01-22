@@ -1,24 +1,21 @@
 ﻿################################################################################
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
+# Build results
+bin/
+obj/
 
-/.vs/AgentsAPI
-/.vs/AgentsAPI/config
-/.vs/AgentsAPI/config/applicationhost.config
-/.vs/AgentsAPI/CopilotIndices/17.14.1290.42047
-/.vs/AgentsAPI/CopilotIndices/17.14.1290.42047/CodeChunks.db
-/.vs/AgentsAPI/CopilotIndices/17.14.1290.42047/CodeChunks.db-shm
-/.vs/AgentsAPI/CopilotIndices/17.14.1290.42047/CodeChunks.db-wal
-/.vs/AgentsAPI/CopilotIndices/17.14.1290.42047/SemanticSymbols.db
-/.vs/AgentsAPI/CopilotIndices/17.14.1290.42047/SemanticSymbols.db-shm
-/.vs/AgentsAPI/CopilotIndices/17.14.1290.42047/SemanticSymbols.db-wal
-/.vs/AgentsAPI/DesignTimeBuild
-/.vs/AgentsAPI/DesignTimeBuild/.dtbcache.v2
-/.vs/AgentsAPI/FileContentIndex
-/.vs/AgentsAPI/FileContentIndex/67627f56-71fc-4f36-a869-4054afc40744.vsidx
-/.vs/AgentsAPI/v17
-/.vs/AgentsAPI/v17/.suo
-/.vs/AgentsAPI/v17/DocumentLayout.backup.json
-/.vs/AgentsAPI/v17/DocumentLayout.json
-/AgentsAPI.Agents/bin/Debug/net9.0
-/AgentsAPI.Agents/obj
+# Debug / Release folders
+Debug/
+Release/
+
+# Rider / VS / VS Code
+.vs/
+.vscode/
+
+# User-specific files
+*.user
+*.suo
+*.rsuser
+*.userosscache
+*.sln.docstates

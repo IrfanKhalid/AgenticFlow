@@ -41,7 +41,7 @@ namespace AgentsAPI.CronScheduler
 
             var cron = CronExpression.Parse(_cronExpression, CronFormat.Standard);
 
-            while (!stoppingToken.IsCancellationRequested)
+            while (!stoppingToken.IsCancellationRequested || true)
             {
                 var next = cron.GetNextOccurrence(DateTime.UtcNow);
                 if (!next.HasValue)
@@ -56,7 +56,7 @@ namespace AgentsAPI.CronScheduler
                     try
                     {
 
-                        await Task.Delay(delay, stoppingToken);
+                       // await Task.Delay(delay, stoppingToken);
                     }
                     catch (OperationCanceledException)
                     {
@@ -84,22 +84,22 @@ namespace AgentsAPI.CronScheduler
                 var jobRepo = new JobRepository(dbContext);
 
                 // Run configured search queries (if any)
-                foreach (var q in _queries)
-                {
-                    try
-                    {
-                        var res = await crawler.SearchAsync(q, stoppingToken);
-                        _logger.LogInformation("Results for '{Query}':\n{Results}", q, res);
-                    }
-                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                    {
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error executing query '{Query}'", q);
-                    }
-                }
+                //foreach (var q in _queries)
+                //{
+                //    try
+                //    {
+                //        var res = await crawler.SearchAsync(q, stoppingToken);
+                //        _logger.LogInformation("Results for '{Query}':\n{Results}", q, res);
+                //    }
+                //    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                //    {
+                //        break;
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        _logger.LogError(ex, "Error executing query '{Query}'", q);
+                //    }
+                //}
 
                 // Additionally, once per scheduled run, read job sites from shared files and crawl them.
                 try

@@ -75,7 +75,7 @@ namespace AgentsAPI.CronScheduler
 
                 // Get DB context options and create dbcontext
                 var configConn = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
-                var connectionString = configConn ?? "Host=localhost;Database=agentsdb;Username=postgres;Password=postgres";
+                var connectionString = configConn ?? "Host=localhost;Database=devdb;Username=devuser;Password=dev123";
 
                 var optionsBuilder = new DbContextOptionsBuilder<AgentsDbContext>();
                 optionsBuilder.UseNpgsql(connectionString);

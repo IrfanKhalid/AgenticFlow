@@ -20,18 +20,23 @@ namespace AgentsAPI.Scrapers.Crawlers
                 await page.GotoAsync("https://fueled.com/careers");
                 await page.WaitForSelectorAsync("h2.wp-block-post-title a");
 
+                //var jobLinks = await page.QuerySelectorAllAsync("h2.wp-block-post-title a");
                 var jobLinks = await page.QuerySelectorAllAsync("h2.wp-block-post-title a");
+                var jobs = new List<(string Title, string Url)>();
+
                 foreach (var job in jobLinks)
+                {
+                    jobs.Add((
+                        Title: (await job.InnerTextAsync()).Trim(),
+                        Url: await job.GetAttributeAsync("href")
+                    ));
+                }
+                foreach (var job in jobs)
                 {
                     try
                     {
-                        var title = (await job.InnerTextAsync()).Trim();
-                        var link = await job.GetAttributeAsync("href");
-                        if (string.IsNullOrWhiteSpace(link))
-                            continue;
-
                         // navigate to job page
-                        await page.GotoAsync(link);
+                        await page.GotoAsync(job.Url);
                         await page.WaitForSelectorAsync(".entry-content");
 
                         var jd = new JobDetail();

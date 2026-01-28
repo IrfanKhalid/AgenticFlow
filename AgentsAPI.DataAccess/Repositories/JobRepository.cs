@@ -15,26 +15,13 @@ namespace AgentsAPI.DataAccess.Repositories
             _db = db;
         }
 
-        public async Task AddOrUpdateAsync(JobDetail job)
+        public async Task AddOrUpdateAsync(List<JobDetail> jobs)
         {
-            if (job == null) throw new ArgumentNullException(nameof(job));
+            if (jobs.Count == 0) throw new ArgumentNullException(nameof(jobs));
 
-            var existing = await _db.JobDetails.FindAsync(job.ApplyUrl);
-            if (existing == null)
-            {
-                await _db.JobDetails.AddAsync(job);
-            }
-            else
-            {
-                existing.Title = job.Title;
-                existing.Location = job.Location;
-                existing.Description = job.Description;
-                existing.Responsibilities = job.Responsibilities;
-                existing.Achievements = job.Achievements;
-                existing.Requirements = job.Requirements;
-                existing.Compensation = job.Compensation;
-            }
-
+            jobs.ForEach(x=>x.Active=true);
+            jobs.ForEach(x => x.StartDate = DateTime.UtcNow);
+            await _db.JobDetails.AddRangeAsync(jobs);
             await _db.SaveChangesAsync();
         }
 

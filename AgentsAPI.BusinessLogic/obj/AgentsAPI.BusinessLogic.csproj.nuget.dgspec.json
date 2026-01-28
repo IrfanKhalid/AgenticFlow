@@ -194,7 +194,11 @@
         "frameworks": {
           "net9.0": {
             "targetAlias": "net9.0",
-            "projectReferences": {}
+            "projectReferences": {
+              "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Shared\\AgentsAPI.Shared.csproj": {
+                "projectPath": "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Shared\\AgentsAPI.Shared.csproj"
+              }
+            }
           }
         },
         "warningProperties": {
@@ -212,6 +216,21 @@
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.Design": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",

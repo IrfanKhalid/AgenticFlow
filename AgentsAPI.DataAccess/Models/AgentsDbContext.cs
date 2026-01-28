@@ -21,11 +21,15 @@ namespace AgentsAPI.DataAccess.Models
                 eb.Property(j => j.Title).HasMaxLength(1000);
                 eb.Property(j => j.Location).HasMaxLength(500);
 
-                // Store lists as JSON columns
-                eb.Property(j => j.Description).HasColumnType("jsonb");
-                eb.Property(j => j.Responsibilities).HasColumnType("jsonb");
-                eb.Property(j => j.Achievements).HasColumnType("jsonb");
-                eb.Property(j => j.Requirements).HasColumnType("jsonb");
+                // Store long text fields as text
+                eb.Property(j => j.Description).HasColumnType("text");
+                eb.Property(j => j.Responsibilities).HasColumnType("text");
+                eb.Property(j => j.Achievements).HasColumnType("text");
+                eb.Property(j => j.Requirements).HasColumnType("text");
+                eb.Property(j => j.Compensation).HasColumnType("text");
+                eb.Property(j => j.StartDate).HasColumnType("date");
+                eb.Property(j => j.Active).HasColumnType("boolean");
+
             });
         }
     }

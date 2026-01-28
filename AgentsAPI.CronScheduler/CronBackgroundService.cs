@@ -75,8 +75,7 @@ namespace AgentsAPI.CronScheduler
 
                 // Get DB context options and create dbcontext
                 var configConn = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
-                var connectionString = configConn ?? "Host=localhost;Database=devdb;Username=devuser;Password=dev123";
-
+                var connectionString = configConn ?? "Host=localhost;Database=agentsdb;Username=postgres;Password=postgres";
                 var optionsBuilder = new DbContextOptionsBuilder<AgentsDbContext>();
                 optionsBuilder.UseNpgsql(connectionString);
 
@@ -116,16 +115,13 @@ namespace AgentsAPI.CronScheduler
 
                                 var jobs = await AgentsAPI.Scrapers.Crawlers.FueledCrawler.CrawlFueledAsync(context);
 
-                                foreach (var job in jobs)
+                                try
                                 {
-                                    try
-                                    {
-                                        await jobRepo.AddOrUpdateAsync(job);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        _logger.LogError(ex, "Error saving job {ApplyUrl}", job.ApplyUrl);
-                                    }
+                                    await jobRepo.AddOrUpdateAsync(jobs);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Error saving job {ApplyUrl}", job.ApplyUrl);
                                 }
                             }
                             else

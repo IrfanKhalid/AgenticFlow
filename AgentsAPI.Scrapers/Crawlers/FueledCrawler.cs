@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Playwright;
 using AgentsAPI.Shared.Models;
@@ -20,7 +21,6 @@ namespace AgentsAPI.Scrapers.Crawlers
                 await page.GotoAsync("https://fueled.com/careers");
                 await page.WaitForSelectorAsync("h2.wp-block-post-title a");
 
-                //var jobLinks = await page.QuerySelectorAllAsync("h2.wp-block-post-title a");
                 var jobLinks = await page.QuerySelectorAllAsync("h2.wp-block-post-title a");
                 var jobs = new List<(string Title, string Url)>();
 
@@ -31,6 +31,7 @@ namespace AgentsAPI.Scrapers.Crawlers
                         Url: await job.GetAttributeAsync("href")
                     ));
                 }
+
                 foreach (var job in jobs)
                 {
                     try
@@ -48,16 +49,22 @@ namespace AgentsAPI.Scrapers.Crawlers
                         var locationEl = await page.QuerySelectorAsync("p:has-text(\"Location:\")");
                         jd.Location = locationEl != null ? (await locationEl.InnerTextAsync()).Replace("Location:", "").Trim() : string.Empty;
 
-                        // Description
+                        // Description: collect paragraphs and join into a single string
+                        var descParts = new List<string>();
                         var paragraphs = await page.QuerySelectorAllAsync(".entry-content > p");
                         foreach (var p in paragraphs)
                         {
                             var text = (await p.InnerTextAsync()).Trim();
                             if (!text.StartsWith("Location:") && text.Length > 50)
-                                jd.Description.Add(text);
+                                descParts.Add(text);
                         }
+                        jd.Description = descParts.Count > 0 ? string.Join("\n\n", descParts) : string.Empty;
 
-                        // Sections
+                        // Sections: gather items and join
+                        var responsibilities = new List<string>();
+                        var achievements = new List<string>();
+                        var requirements = new List<string>();
+
                         var headings = await page.QuerySelectorAllAsync("h3.wp-block-heading");
                         foreach (var heading in headings)
                         {
@@ -70,13 +77,17 @@ namespace AgentsAPI.Scrapers.Crawlers
                             {
                                 var text = (await item.InnerTextAsync()).Trim();
                                 if (sectionTitle.Contains("what you will do"))
-                                    jd.Responsibilities.Add(text);
+                                    responsibilities.Add(text);
                                 else if (sectionTitle.Contains("what you will achieve"))
-                                    jd.Achievements.Add(text);
+                                    achievements.Add(text);
                                 else if (sectionTitle.Contains("about you"))
-                                    jd.Requirements.Add(text);
+                                    requirements.Add(text);
                             }
                         }
+
+                        jd.Responsibilities = responsibilities.Count > 0 ? string.Join("\n", responsibilities) : string.Empty;
+                        jd.Achievements = achievements.Count > 0 ? string.Join("\n", achievements) : string.Empty;
+                        jd.Requirements = requirements.Count > 0 ? string.Join("\n", requirements) : string.Empty;
 
                         // Compensation
                         var compHeader = await page.QuerySelectorAsync("h3:has-text(\"Contractor fee\")");

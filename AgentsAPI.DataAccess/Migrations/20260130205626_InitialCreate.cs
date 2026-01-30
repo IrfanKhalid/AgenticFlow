@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -15,18 +15,21 @@ namespace AgentsAPI.DataAccess.Migrations
                 name: "JobDetails",
                 columns: table => new
                 {
-                    ApplyUrl = table.Column<string>(type: "text", nullable: false),
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Title = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
                     Location = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    Description = table.Column<List<string>>(type: "jsonb", nullable: false),
-                    Responsibilities = table.Column<List<string>>(type: "jsonb", nullable: false),
-                    Achievements = table.Column<List<string>>(type: "jsonb", nullable: false),
-                    Requirements = table.Column<List<string>>(type: "jsonb", nullable: false),
-                    Compensation = table.Column<string>(type: "text", nullable: false)
+                    Description = table.Column<string>(type: "text", nullable: true),
+                    Responsibilities = table.Column<string>(type: "text", nullable: true),
+                    Achievements = table.Column<string>(type: "text", nullable: true),
+                    Requirements = table.Column<string>(type: "text", nullable: true),
+                    Compensation = table.Column<string>(type: "text", nullable: false),
+                    ApplyUrl = table.Column<string>(type: "text", nullable: false),
+                    StartDate = table.Column<DateTime>(type: "date", nullable: false),
+                    Active = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_JobDetails", x => x.ApplyUrl);
+                    table.PrimaryKey("PK_JobDetails", x => x.Id);
                 });
         }
 

@@ -24,14 +24,19 @@ namespace AgentsAPI.DataAccess.Migrations
 
             modelBuilder.Entity("AgentsAPI.Shared.Models.JobDetail", b =>
                 {
-                    b.Property<string>("ApplyUrl")
-                        .HasColumnType("text");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Achievements")
                         .HasColumnType("text");
 
                     b.Property<bool>("Active")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("ApplyUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Compensation")
                         .IsRequired()
@@ -59,7 +64,7 @@ namespace AgentsAPI.DataAccess.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.HasKey("ApplyUrl");
+                    b.HasKey("Id");
 
                     b.ToTable("JobDetails");
                 });

@@ -87,7 +87,13 @@ namespace AgentsAPI.CronScheduler
                     {
                         try
                         {
-                            var browser = scope.ServiceProvider.GetRequiredService<IBrowser>();
+                            var playwright = await Playwright.CreateAsync();
+
+                            var browser = await playwright.Chromium.LaunchAsync(
+                                new BrowserTypeLaunchOptions
+                                {
+                                    Headless = false
+                                });
                             await using var context = await browser.NewContextAsync();
                             if (site.Contains("fueled.com", StringComparison.OrdinalIgnoreCase))
                             {
@@ -117,6 +123,10 @@ namespace AgentsAPI.CronScheduler
                                 {
                                     _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
                                 }
+                            }
+                            else if ()
+                            {
+
                             }
                             else
                             {

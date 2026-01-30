@@ -17,7 +17,8 @@ namespace AgentsAPI.DataAccess.Models
 
             modelBuilder.Entity<JobDetail>(eb =>
             {
-                eb.HasKey(j => j.ApplyUrl); // Use ApplyUrl as unique key for now
+                eb.HasKey(j=>j.Id); // No primary key
+                eb.Property(j => j.ApplyUrl); // Use ApplyUrl as unique key for now
                 eb.Property(j => j.Title).HasMaxLength(1000);
                 eb.Property(j => j.Location).HasMaxLength(500);
 

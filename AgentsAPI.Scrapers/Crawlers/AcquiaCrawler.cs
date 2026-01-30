@@ -7,9 +7,9 @@ using AgentsAPI.Shared.Models;
 
 namespace AgentsAPI.Scrapers.Crawlers
 {
-    public static class FueledCrawler
+    public static class AcquiaCrawler
     {
-        public static async Task<List<JobDetail>> CrawlFueledAsync(IBrowserContext browser)
+        public static async Task<List<JobDetail>> CrawlAcquiaAsync(IBrowserContext browser)
         {
             if (browser == null) throw new ArgumentNullException(nameof(browser));
 
@@ -18,26 +18,22 @@ namespace AgentsAPI.Scrapers.Crawlers
 
             try
             {
-                await page.GotoAsync("https://fueled.com/careers");
+                await page.GotoAsync("https://www.acquia.com/careers/open-positions");
                 await page.WaitForSelectorAsync("h2.wp-block-post-title a");
 
-                var jobLinks = await page.QuerySelectorAllAsync("h2.wp-block-post-title a");
-                var jobs = new List<(string Title, string Url)>();
+                await page.WaitForSelectorAsync(".views-row a");
 
-                foreach (var job in jobLinks)
-                {
-                    jobs.Add((
-                        Title: (await job.InnerTextAsync()).Trim(),
-                        Url: await job.GetAttributeAsync("href")
-                    ));
-                }
-
+                var jobs = await page.EvaluateAsync<string[]>(@"
+                    () => Array.from(
+                        document.querySelectorAll('.views-row a')
+                    ).map(a => a.href)
+                ");
                 foreach (var job in jobs)
                 {
                     try
                     {
                         // navigate to job page
-                        await page.GotoAsync(job.Url);
+                        await page.GotoAsync(job);
                         await page.WaitForSelectorAsync(".entry-content");
 
                         var jd = new JobDetail();

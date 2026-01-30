@@ -81,37 +81,18 @@ namespace AgentsAPI.CronScheduler
 
                 using var dbContext = new AgentsDbContext(optionsBuilder.Options);
                 var jobRepo = new JobRepository(dbContext);
-
-                // Run configured search queries (if any)
-                //foreach (var q in _queries)
-                //{
-                //    try
-                //    {
-                //        var res = await crawler.SearchAsync(q, stoppingToken);
-                //        _logger.LogInformation("Results for '{Query}':\n{Results}", q, res);
-                //    }
-                //    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                //    {
-                //        break;
-                //    }
-                //    catch (Exception ex)
-                //    {
-                //        _logger.LogError(ex, "Error executing query '{Query}'", q);
-                //    }
-                //}
-
-                // Additionally, once per scheduled run, read job sites from shared files and crawl them.
                 try
                 {
                     await foreach (var site in ScrappingJobs.ReadJobSitesFromShared(solutionRoot).WithCancellation(stoppingToken))
                     {
                         try
                         {
+                            var browser = scope.ServiceProvider.GetRequiredService<IBrowser>();
+                            await using var context = await browser.NewContextAsync();
                             if (site.Contains("fueled.com", StringComparison.OrdinalIgnoreCase))
                             {
                                 // use injected singleton IBrowser to create a context
-                                var browser = scope.ServiceProvider.GetRequiredService<IBrowser>();
-                                await using var context = await browser.NewContextAsync();
+                                
 
                                 var jobs = await AgentsAPI.Scrapers.Crawlers.FueledCrawler.CrawlFueledAsync(context);
 
@@ -121,7 +102,20 @@ namespace AgentsAPI.CronScheduler
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogError(ex, "Error saving job {ApplyUrl}", job.ApplyUrl);
+                                    _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
+                                }
+                            }
+                            else if (site.Contains("ashbyhq", StringComparison.OrdinalIgnoreCase))
+                            {
+                                var jobs = await AgentsAPI.Scrapers.Crawlers.AshbyhqCrawler.CrawlAshbyhqAsync(context);
+
+                                try
+                                {
+                                    await jobRepo.AddOrUpdateAsync(jobs);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
                                 }
                             }
                             else

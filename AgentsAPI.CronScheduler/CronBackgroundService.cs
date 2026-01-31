@@ -124,9 +124,18 @@ namespace AgentsAPI.CronScheduler
                                     _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
                                 }
                             }
-                            else if ()
+                            else if (site.Contains("acquia", StringComparison.OrdinalIgnoreCase))
                             {
+                                var jobs = await AgentsAPI.Scrapers.Crawlers.AcquiaCrawler.CrawlAcquiaAsync(context);
 
+                                try
+                                {
+                                    await jobRepo.AddOrUpdateAsync(jobs);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
+                                }
                             }
                             else
                             {

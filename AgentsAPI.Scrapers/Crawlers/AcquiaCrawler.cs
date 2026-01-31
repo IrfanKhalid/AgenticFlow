@@ -19,9 +19,6 @@ namespace AgentsAPI.Scrapers.Crawlers
             try
             {
                 await page.GotoAsync("https://www.acquia.com/careers/open-positions");
-                await page.WaitForSelectorAsync("h2.wp-block-post-title a");
-
-                await page.WaitForSelectorAsync(".views-row a");
 
                 var jobs = await page.EvaluateAsync<string[]>(@"
                     () => Array.from(
@@ -34,77 +31,26 @@ namespace AgentsAPI.Scrapers.Crawlers
                     {
                         // navigate to job page
                         await page.GotoAsync(job);
-                        await page.WaitForSelectorAsync(".entry-content");
+                        await page.WaitForTimeoutAsync(700);
 
                         var jd = new JobDetail();
 
                         // Title
-                        jd.Title = (await page.InnerTextAsync("h1")).Trim();
+                        jd.Title = await page.Locator("h1.section-header").InnerTextAsync();
 
                         // Location
                         var locationEl = await page.QuerySelectorAsync("p:has-text(\"Location:\")");
-                        jd.Location = locationEl != null ? (await locationEl.InnerTextAsync()).Replace("Location:", "").Trim() : string.Empty;
-
-                        // Description: collect paragraphs and join into a single string
-                        var descParts = new List<string>();
-                        var paragraphs = await page.QuerySelectorAllAsync(".entry-content > p");
-                        foreach (var p in paragraphs)
-                        {
-                            var text = (await p.InnerTextAsync()).Trim();
-                            if (!text.StartsWith("Location:") && text.Length > 50)
-                                descParts.Add(text);
-                        }
-                        jd.Description = descParts.Count > 0 ? string.Join("\n\n", descParts) : string.Empty;
-
-                        // Sections: gather items and join
-                        var responsibilities = new List<string>();
-                        var achievements = new List<string>();
-                        var requirements = new List<string>();
-
-                        var headings = await page.QuerySelectorAllAsync("h3.wp-block-heading");
-                        foreach (var heading in headings)
-                        {
-                            var sectionTitle = (await heading.InnerTextAsync()).Trim().ToLower();
-                            var columnHandle = await heading.EvaluateHandleAsync("h => h.parentElement.nextElementSibling");
-                            if (columnHandle == null) continue;
-
-                            var items = await columnHandle.AsElement().QuerySelectorAllAsync("li");
-                            foreach (var item in items)
-                            {
-                                var text = (await item.InnerTextAsync()).Trim();
-                                if (sectionTitle.Contains("what you will do"))
-                                    responsibilities.Add(text);
-                                else if (sectionTitle.Contains("what you will achieve"))
-                                    achievements.Add(text);
-                                else if (sectionTitle.Contains("about you"))
-                                    requirements.Add(text);
-                            }
-                        }
-
-                        jd.Responsibilities = responsibilities.Count > 0 ? string.Join("\n", responsibilities) : string.Empty;
-                        jd.Achievements = achievements.Count > 0 ? string.Join("\n", achievements) : string.Empty;
-                        jd.Requirements = requirements.Count > 0 ? string.Join("\n", requirements) : string.Empty;
-
-                        // Compensation
-                        var compHeader = await page.QuerySelectorAsync("h3:has-text(\"Contractor fee\")");
-                        if (compHeader != null)
-                        {
-                            var compParagraphHandle = await compHeader.EvaluateHandleAsync("h => h.nextElementSibling");
-                            if (compParagraphHandle != null)
-                            {
-                                jd.Compensation = (await compParagraphHandle.AsElement().InnerTextAsync()).Trim();
-                            }
-                        }
-
-                        // Apply URL
-                        var applyLink = await page.QuerySelectorAsync("a:has-text(\"Apply Now\")");
-                        jd.ApplyUrl = applyLink != null ? await applyLink.GetAttributeAsync("href") : string.Empty;
+                        jd.Location = await page.Locator("div.job__location").First.InnerTextAsync(); ;
+                        jd.Description = await page.InnerTextAsync("div.job__description.body");
+                        jd.ApplyUrl = job;
                         await page.WaitForTimeoutAsync(600);
                         results.Add(jd);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // ignore single job failures
+                        {
+                            // ignore single job failures
+                        }
                     }
                 }
             }

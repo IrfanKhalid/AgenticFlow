@@ -18,5 +18,6 @@ namespace AgentsAPI.Shared.Models
         public string ApplyUrl { get; set; } = string.Empty;
         public DateTime StartDate { get; set; }
         public bool Active { get; set; } = false;
+        public string Department { get; set; } = string.Empty;
     }
 }

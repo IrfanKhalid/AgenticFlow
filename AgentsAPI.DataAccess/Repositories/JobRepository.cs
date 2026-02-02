@@ -20,7 +20,7 @@ namespace AgentsAPI.DataAccess.Repositories
             if (jobs.Count == 0) throw new ArgumentNullException(nameof(jobs));
 
             jobs.ForEach(x=>x.Active=true);
-            jobs.ForEach(x => x.StartDate = DateTime.UtcNow);
+            jobs.ForEach(x => x.StartDate =  (x.StartDate.Year < 2022) ? DateTime.UtcNow: x.StartDate);
             await _db.JobDetails.AddRangeAsync(jobs);
             await _db.SaveChangesAsync();
         }

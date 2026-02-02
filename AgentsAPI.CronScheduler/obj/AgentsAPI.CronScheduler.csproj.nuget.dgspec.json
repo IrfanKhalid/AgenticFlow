@@ -115,6 +115,15 @@
             "projectReferences": {
               "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Agents\\AgentsAPI.Agents.csproj": {
                 "projectPath": "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Agents\\AgentsAPI.Agents.csproj"
+              },
+              "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.DataAccess\\AgentsAPI.DataAccess.csproj": {
+                "projectPath": "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.DataAccess\\AgentsAPI.DataAccess.csproj"
+              },
+              "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Scrapers\\AgentsAPI.Scrapers.csproj": {
+                "projectPath": "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Scrapers\\AgentsAPI.Scrapers.csproj"
+              },
+              "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Shared\\AgentsAPI.Shared.csproj": {
+                "projectPath": "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Shared\\AgentsAPI.Shared.csproj"
               }
             }
           }
@@ -155,6 +164,171 @@
               "target": "Package",
               "version": "[8.0.0, )"
             },
+            "Microsoft.Playwright": {
+              "target": "Package",
+              "version": "[1.57.0, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.DataAccess\\AgentsAPI.DataAccess.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.DataAccess\\AgentsAPI.DataAccess.csproj",
+        "projectName": "AgentsAPI.DataAccess",
+        "projectPath": "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.DataAccess\\AgentsAPI.DataAccess.csproj",
+        "packagesPath": "C:\\Users\\mirfa\\.nuget\\packages\\",
+        "outputPath": "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.DataAccess\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\mirfa\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Shared\\AgentsAPI.Shared.csproj": {
+                "projectPath": "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Shared\\AgentsAPI.Shared.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.Design": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Scrapers\\AgentsAPI.Scrapers.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Scrapers\\AgentsAPI.Scrapers.csproj",
+        "projectName": "AgentsAPI.Scrapers",
+        "projectPath": "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Scrapers\\AgentsAPI.Scrapers.csproj",
+        "packagesPath": "C:\\Users\\mirfa\\.nuget\\packages\\",
+        "outputPath": "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Scrapers\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\mirfa\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Shared\\AgentsAPI.Shared.csproj": {
+                "projectPath": "C:\\Irfan\\Work\\Deep Learning\\Agentic Learning\\AgenticApi\\AgentsAPI.Shared\\AgentsAPI.Shared.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
             "Microsoft.Playwright": {
               "target": "Package",
               "version": "[1.57.0, )"

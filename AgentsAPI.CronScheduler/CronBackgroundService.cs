@@ -92,7 +92,7 @@ namespace AgentsAPI.CronScheduler
                             var browser = await playwright.Chromium.LaunchAsync(
                                 new BrowserTypeLaunchOptions
                                 {
-                                    Headless = true
+                                    Headless = false,
                                 });
                             await using var context = await browser.NewContextAsync();
                             if (site.Contains("fueled.com", StringComparison.OrdinalIgnoreCase))
@@ -140,6 +140,18 @@ namespace AgentsAPI.CronScheduler
                             else if (site.Contains("microsoft", StringComparison.OrdinalIgnoreCase))
                             {
                                 var jobs = await AgentsAPI.Scrapers.Crawlers.MicrosoftCrawler.CrawlMicrosoftAsync(context);
+                                try
+                                {
+                                    await jobRepo.AddOrUpdateAsync(jobs);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
+                                }
+                            }
+                            else if (site.Contains("amazon", StringComparison.OrdinalIgnoreCase))
+                            {
+                                var jobs = await AgentsAPI.Scrapers.Crawlers.AmazonCrawler.CrawlAmazonAsync(context);
                                 try
                                 {
                                     await jobRepo.AddOrUpdateAsync(jobs);

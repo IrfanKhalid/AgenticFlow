@@ -113,6 +113,6 @@ namespace AgentsAPI.Scrapers.Crawlers
             }
 
             return results;
-        }
+        } 
     }
 }

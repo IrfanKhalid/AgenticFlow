@@ -1,18 +1,19 @@
+using AgentsAPI.DataAccess.Models;
+using AgentsAPI.DataAccess.Repositories;
+using Cronos;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.Playwright;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Cronos;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using AgentsAPI.DataAccess.Repositories;
-using AgentsAPI.DataAccess.Models;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Playwright;
 
 namespace AgentsAPI.CronScheduler
 {
@@ -22,7 +23,7 @@ namespace AgentsAPI.CronScheduler
         private readonly ILogger<CronBackgroundService> _logger;
         private readonly string _cronExpression;
         private readonly List<string> _queries;
-
+        private readonly JobRepository jobRepository ;
         public CronBackgroundService(IServiceProvider provider, ILogger<CronBackgroundService> logger)
         {
             _provider = provider;
@@ -30,9 +31,15 @@ namespace AgentsAPI.CronScheduler
 
             // read configuration from environment variables for easier Windows Scheduler runs
             // default to once per day at midnight UTC
+            var configConn = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
+            var connectionString = configConn ?? "Host=localhost;Database=agentsdb;Username=postgres;Password=postgres";
+            var optionsBuilder = new DbContextOptionsBuilder<AgentsDbContext>();
+            optionsBuilder.UseNpgsql(connectionString);
+            using var dbContext = new AgentsDbContext(optionsBuilder.Options);
+            jobRepository = new JobRepository(dbContext);
             _cronExpression = Environment.GetEnvironmentVariable("CRON_EXPRESSION") ?? "0 0 * * *";
             var queriesRaw = Environment.GetEnvironmentVariable("CRAWL_QUERIES") ?? "example";
-            _queries = queriesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+            _queries = queriesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();            
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -74,13 +81,10 @@ namespace AgentsAPI.CronScheduler
                 var solutionRoot = env.ContentRootPath;
 
                 // Get DB context options and create dbcontext
-                var configConn = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
-                var connectionString = configConn ?? "Host=localhost;Database=agentsdb;Username=postgres;Password=postgres";
-                var optionsBuilder = new DbContextOptionsBuilder<AgentsDbContext>();
-                optionsBuilder.UseNpgsql(connectionString);
 
-                using var dbContext = new AgentsDbContext(optionsBuilder.Options);
-                var jobRepo = new JobRepository(dbContext);
+
+                
+                
                 try
                 {
                     await foreach (var site in ScrappingJobs.ReadJobSitesFromShared(solutionRoot).WithCancellation(stoppingToken))
@@ -93,73 +97,45 @@ namespace AgentsAPI.CronScheduler
                                 new BrowserTypeLaunchOptions
                                 {
                                     Headless = false,
+                                   //UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
                                 });
                             await using var context = await browser.NewContextAsync();
+                            await context.RouteAsync("**/*", route =>
+                            {
+                                var type = route.Request.ResourceType;
+                                if (type == "image" || type == "font" || type == "media")
+                                    route.AbortAsync();
+                                else
+                                    route.ContinueAsync();
+                            });
+
+
                             if (site.Contains("fueled.com", StringComparison.OrdinalIgnoreCase))
                             {
                                 // use injected singleton IBrowser to create a context
                                 
-
                                 var jobs = await AgentsAPI.Scrapers.Crawlers.FueledCrawler.CrawlFueledAsync(context);
-
-                                try
-                                {
-                                    await jobRepo.AddOrUpdateAsync(jobs);
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
-                                }
+                                await InsertJobsByBatch(jobs);
                             }
                             else if (site.Contains("ashbyhq", StringComparison.OrdinalIgnoreCase))
                             {
                                 var jobs = await AgentsAPI.Scrapers.Crawlers.AshbyhqCrawler.CrawlAshbyhqAsync(context);
-
-                                try
-                                {
-                                    await jobRepo.AddOrUpdateAsync(jobs);
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
-                                }
+                                await InsertJobsByBatch(jobs);
                             }
                             else if (site.Contains("acquia", StringComparison.OrdinalIgnoreCase))
                             {
                                 var jobs = await AgentsAPI.Scrapers.Crawlers.AcquiaCrawler.CrawlAcquiaAsync(context);
-
-                                try
-                                {
-                                    await jobRepo.AddOrUpdateAsync(jobs);
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
-                                }
+                                await InsertJobsByBatch(jobs);
                             }
                             else if (site.Contains("microsoft", StringComparison.OrdinalIgnoreCase))
                             {
                                 var jobs = await AgentsAPI.Scrapers.Crawlers.MicrosoftCrawler.CrawlMicrosoftAsync(context);
-                                try
-                                {
-                                    await jobRepo.AddOrUpdateAsync(jobs);
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
-                                }
+                                await InsertJobsByBatch(jobs);
                             }
                             else if (site.Contains("amazon", StringComparison.OrdinalIgnoreCase))
                             {
                                 var jobs = await AgentsAPI.Scrapers.Crawlers.AmazonCrawler.CrawlAmazonAsync(context);
-                                try
-                                {
-                                    await jobRepo.AddOrUpdateAsync(jobs);
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
-                                }
+                                await InsertJobsByBatch(jobs);
                             }
                             else
                             {
@@ -188,6 +164,30 @@ namespace AgentsAPI.CronScheduler
             }
 
             _logger.LogInformation("CronBackgroundService stopping.");
+        }
+
+        private async Task InsertJobsByBatch(List<Shared.Models.JobDetail> jobs)
+        {
+            try
+            {
+                if (jobs.Count < 1000)
+                {
+                    await jobRepository.AddOrUpdateAsync(jobs);
+                }
+                else
+                {
+                    var batchSize = 1000;
+                    for (int i = 0; i < jobs.Count; i += batchSize)
+                    {
+                        var batch = jobs.GetRange(i, Math.Min(batchSize, jobs.Count - i));
+                        await jobRepository.AddOrUpdateAsync(batch);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
+            }
         }
     }
 }

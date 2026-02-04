@@ -97,6 +97,7 @@ namespace AgentsAPI.Scrapers.Crawlers
                             jd.ApplyUrl = baseUri+href;
                             await page.WaitForTimeoutAsync(600);
                             results.Add(jd);
+
                         }
                         catch (Exception ex)
                         {

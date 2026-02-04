@@ -27,7 +27,8 @@ namespace AgentsAPI.Scrapers.Crawlers
                 page.WaitForTimeoutAsync(1000);
                 //await page.GetByRole(AriaRole.Link, new() { Name = "View open roles" }).ClickAsync();
                 await page.GotoAsync("https://www.amazon.jobs/en/search?offset=0&result_limit=10&sort=relevant&business_category%5B%5D=amazon-web-services&cmpid=AS_OTAW200199B");
-                page.WaitForTimeoutAsync(10000);
+
+                await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
 
                 string currentUrl = page.Url;
@@ -106,7 +107,7 @@ namespace AgentsAPI.Scrapers.Crawlers
                             }
 
 
-                            await page.WaitForTimeoutAsync(600);
+                            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
                             results.Add(jd);
                         }
                         catch (Exception ex)
@@ -115,7 +116,7 @@ namespace AgentsAPI.Scrapers.Crawlers
                         }
                     }
                     await page.GotoAsync(currentUrl);
-                    await page.WaitForTimeoutAsync(1500);
+                    await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
                     var isDisabled = await page.IsDisabledAsync(ariaDisabled);
                     if (isDisabled)
                     {
@@ -125,7 +126,7 @@ namespace AgentsAPI.Scrapers.Crawlers
 
                     // Click the button
                     await page.ClickAsync(ariaDisabled);
-                    await page.WaitForTimeoutAsync(1000);
+                    await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
                     currentUrl = page.Url;
                 }               
             }

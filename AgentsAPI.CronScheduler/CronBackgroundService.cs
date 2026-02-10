@@ -1,13 +1,11 @@
 using AgentsAPI.DataAccess.Models;
 using AgentsAPI.DataAccess.Repositories;
+using AgentsAPI.Shared.Models;
 using Cronos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.Playwright;
 using System;
 using System.Collections.Generic;
@@ -23,7 +21,6 @@ namespace AgentsAPI.CronScheduler
         private readonly ILogger<CronBackgroundService> _logger;
         private readonly string _cronExpression;
         private readonly List<string> _queries;
-        private readonly JobRepository jobRepository ;
         public CronBackgroundService(IServiceProvider provider, ILogger<CronBackgroundService> logger)
         {
             _provider = provider;
@@ -31,15 +28,10 @@ namespace AgentsAPI.CronScheduler
 
             // read configuration from environment variables for easier Windows Scheduler runs
             // default to once per day at midnight UTC
-            var configConn = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
-            var connectionString = configConn ?? "Host=localhost;Database=agentsdb;Username=postgres;Password=postgres";
-            var optionsBuilder = new DbContextOptionsBuilder<AgentsDbContext>();
-            optionsBuilder.UseNpgsql(connectionString);
-            using var dbContext = new AgentsDbContext(optionsBuilder.Options);
-            jobRepository = new JobRepository(dbContext);
+
             _cronExpression = Environment.GetEnvironmentVariable("CRON_EXPRESSION") ?? "0 0 * * *";
             var queriesRaw = Environment.GetEnvironmentVariable("CRAWL_QUERIES") ?? "example";
-            _queries = queriesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();            
+            _queries = queriesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -48,7 +40,7 @@ namespace AgentsAPI.CronScheduler
 
             var cron = CronExpression.Parse(_cronExpression, CronFormat.Standard);
 
-            while (!stoppingToken.IsCancellationRequested || true)
+            while (!stoppingToken.IsCancellationRequested)
             {
                 var next = cron.GetNextOccurrence(DateTime.UtcNow);
                 if (!next.HasValue)
@@ -75,98 +67,136 @@ namespace AgentsAPI.CronScheduler
 
                 using var scope = _provider.CreateScope();
 
-                var crawler = scope.ServiceProvider.GetRequiredService<AgentsAPI.Agents.ICrawlerAgent>();
                 // Also get host environment to locate shared files
                 var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
                 var solutionRoot = env.ContentRootPath;
 
                 // Get DB context options and create dbcontext
 
+                var configConn = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
+                var connectionString = configConn ?? "Host=localhost;Database=agentsdb;Username=postgres;Password=postgres";
 
-                
-                
                 try
                 {
-                    await foreach (var site in ScrappingJobs.ReadJobSitesFromShared(solutionRoot).WithCancellation(stoppingToken))
+                    var crawlerTasks = StartKnownCrawlers(connectionString, stoppingToken).ToArray();
+                    if (crawlerTasks.Length > 0)
                     {
-                        try
-                        {
-                            var playwright = await Playwright.CreateAsync();
-
-                            var browser = await playwright.Chromium.LaunchAsync(
-                                new BrowserTypeLaunchOptions
-                                {
-                                    Headless = false,
-                                   //UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
-                                });
-                            await using var context = await browser.NewContextAsync();
-                            await context.RouteAsync("**/*", route =>
-                            {
-                                var type = route.Request.ResourceType;
-                                if (type == "image" || type == "font" || type == "media")
-                                    route.AbortAsync();
-                                else
-                                    route.ContinueAsync();
-                            });
-
-
-                            if (site.Contains("fueled.com", StringComparison.OrdinalIgnoreCase))
-                            {
-                                // use injected singleton IBrowser to create a context
-                                
-                                var jobs = await AgentsAPI.Scrapers.Crawlers.FueledCrawler.CrawlFueledAsync(context);
-                                await InsertJobsByBatch(jobs);
-                            }
-                            else if (site.Contains("ashbyhq", StringComparison.OrdinalIgnoreCase))
-                            {
-                                var jobs = await AgentsAPI.Scrapers.Crawlers.AshbyhqCrawler.CrawlAshbyhqAsync(context);
-                                await InsertJobsByBatch(jobs);
-                            }
-                            else if (site.Contains("acquia", StringComparison.OrdinalIgnoreCase))
-                            {
-                                var jobs = await AgentsAPI.Scrapers.Crawlers.AcquiaCrawler.CrawlAcquiaAsync(context);
-                                await InsertJobsByBatch(jobs);
-                            }
-                            else if (site.Contains("microsoft", StringComparison.OrdinalIgnoreCase))
-                            {
-                                var jobs = await AgentsAPI.Scrapers.Crawlers.MicrosoftCrawler.CrawlMicrosoftAsync(context);
-                                await InsertJobsByBatch(jobs);
-                            }
-                            else if (site.Contains("amazon", StringComparison.OrdinalIgnoreCase))
-                            {
-                                var jobs = await AgentsAPI.Scrapers.Crawlers.AmazonCrawler.CrawlAmazonAsync(context);
-                                await InsertJobsByBatch(jobs);
-                            }
-                            else
-                            {
-                                // fallback generic crawl (not implemented) - use previous CrawlSitesAsync
-                                await ScrappingJobs.CrawlSitesAsync(site);
-                            }
-                        }
-                        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                        {
-                            break;
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error crawling job site {Site}", site);
-                        }
+                        _logger.LogInformation("Launching {Count} crawler(s) in parallel", crawlerTasks.Length);
+                        await Task.WhenAll(crawlerTasks);
                     }
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
-                    // shutting down
+                    break;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error reading job sites from shared files");
+                    _logger.LogError(ex, "Error running crawler batch");
                 }
+
+                await RunSequentialSiteOptimizations(solutionRoot, stoppingToken);
             }
 
             _logger.LogInformation("CronBackgroundService stopping.");
         }
 
-        private async Task InsertJobsByBatch(List<Shared.Models.JobDetail> jobs)
+        private IEnumerable<Task> StartKnownCrawlers(string connectionString, CancellationToken stoppingToken)
+        {
+            return new[]
+            {
+                RunCrawlerAsync("Fueled", ctx => AgentsAPI.Scrapers.Crawlers.FueledCrawler.CrawlFueledAsync(ctx), connectionString, stoppingToken),
+                RunCrawlerAsync("AshbyHQ", ctx => AgentsAPI.Scrapers.Crawlers.AshbyhqCrawler.CrawlAshbyhqAsync(ctx), connectionString, stoppingToken),
+                RunCrawlerAsync("Acquia", ctx => AgentsAPI.Scrapers.Crawlers.AcquiaCrawler.CrawlAcquiaAsync(ctx), connectionString, stoppingToken),
+                RunCrawlerAsync("Microsoft", ctx => AgentsAPI.Scrapers.Crawlers.MicrosoftCrawler.CrawlMicrosoftAsync(ctx), connectionString, stoppingToken),
+                RunCrawlerAsync("Amazon", ctx => AgentsAPI.Scrapers.Crawlers.AmazonCrawler.CrawlAmazonAsync(ctx), connectionString, stoppingToken)
+            };
+        }
+
+        private async Task RunCrawlerAsync(string crawlerName, Func<IBrowserContext, Task<List<JobDetail>>> crawlFunc, string connectionString, CancellationToken stoppingToken)
+        {
+            try
+            {
+                stoppingToken.ThrowIfCancellationRequested();
+                _logger.LogInformation("Starting crawler {CrawlerName}", crawlerName);
+
+                using var playwright = await Playwright.CreateAsync();
+                await using var browser = await playwright.Chromium.LaunchAsync(
+                    new BrowserTypeLaunchOptions
+                    {
+                        Headless = true,
+                    });
+                await using var context = await browser.NewContextAsync();
+                await context.RouteAsync("**/*", route =>
+                {
+                    var type = route.Request.ResourceType;
+                    return type == "image" || type == "font" || type == "media"
+                        ? route.AbortAsync()
+                        : route.ContinueAsync();
+                });
+
+                var jobs = await crawlFunc(context);
+                if (jobs?.Count > 0)
+                {
+                    await using var dbContext = CreateDbContext(connectionString);
+                    var jobRepository = new JobRepository(dbContext);
+                    await InsertJobsByBatch(jobs, jobRepository);
+                    _logger.LogInformation("Crawler {CrawlerName} completed with {Count} jobs", crawlerName, jobs.Count);
+                }
+                else
+                {
+                    _logger.LogInformation("Crawler {CrawlerName} completed with no jobs", crawlerName);
+                }
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("Crawler {CrawlerName} canceled", crawlerName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Crawler {CrawlerName} failed", crawlerName);
+            }
+        }
+
+        private static AgentsDbContext CreateDbContext(string connectionString)
+        {
+            var optionsBuilder = new DbContextOptionsBuilder<AgentsDbContext>();
+            optionsBuilder.UseNpgsql(connectionString);
+            return new AgentsDbContext(optionsBuilder.Options);
+        }
+
+        private async Task RunSequentialSiteOptimizations(string solutionRoot, CancellationToken stoppingToken)
+        {
+            try
+            {
+                await foreach (var site in ScrappingJobs.ReadJobSitesFromShared(solutionRoot).WithCancellation(stoppingToken))
+                {
+                    try
+                    {
+                        _logger.LogInformation("Optimizing crawler for site {Site}", site);
+                        await ScrappingJobs.CrawlSitesAsync(site);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error optimizing crawler for site {Site}", site);
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                // shutting down
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reading job sites from shared files");
+            }
+        }
+
+        private async Task InsertJobsByBatch(List<JobDetail> jobs, JobRepository jobRepository)
         {
             try
             {

@@ -22,15 +22,13 @@ namespace AgentsAPI.Scrapers.Crawlers
 
             try
             {
-                await page.GotoAsync(
-                    "https://www.amazon.jobs/content/en/teams/amazon-web-services",
-                    new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 120000 });
+                //await page.GotoAsync(
+                //    "https://www.amazon.jobs/content/en/teams/amazon-web-services");
 
-                await page.WaitForTimeoutAsync(1000);
+               // await page.WaitForTimeoutAsync(1000);
                 //await page.GetByRole(AriaRole.Link, new() { Name = "View open roles" }).ClickAsync();
                 await page.GotoAsync(
-                    "https://www.amazon.jobs/en/search?offset=0&result_limit=10&sort=relevant&business_category%5B%5D=amazon-web-services&cmpid=AS_OTAW200199B",
-                    new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 120000 });
+                    "https://www.amazon.jobs/en/search?offset=0&result_limit=10&sort=relevant&business_category%5B%5D=amazon-web-services&cmpid=AS_OTAW200199B");
 
                 await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
 

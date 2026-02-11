@@ -10,6 +10,7 @@ namespace AgentsAPI.DataAccess.Models
         }
 
         public DbSet<JobDetail> JobDetails { get; set; } = null!;
+        public DbSet<CrawlerRun> CrawlerRuns { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -31,6 +32,15 @@ namespace AgentsAPI.DataAccess.Models
                 eb.Property(j => j.StartDate).HasColumnType("date");
                 eb.Property(j => j.Active).HasColumnType("boolean");
 
+            });
+
+            modelBuilder.Entity<CrawlerRun>(eb =>
+            {
+                eb.HasKey(r => r.Id);
+                eb.Property(r => r.CrawlerName).IsRequired();
+                eb.Property(r => r.StartedAtUtc);
+                eb.Property(r => r.CompletedAtUtc);
+                eb.Property(r => r.DurationMs);
             });
         }
     }

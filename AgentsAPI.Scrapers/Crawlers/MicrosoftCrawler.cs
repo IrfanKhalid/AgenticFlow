@@ -21,9 +21,9 @@ namespace AgentsAPI.Scrapers.Crawlers
 
             try
             {
-                await page.GotoAsync("https://careers.microsoft.com/v2/global/en/home.html");
+                await page.GotoAsync("https://apply.careers.microsoft.com/careers?query=&location=&start=0");
                 page.WaitForTimeoutAsync(1000);
-                await page.GetByRole(AriaRole.Button, new() { Name = "Find jobs" }).ClickAsync();
+                //await page.GetByRole(AriaRole.Button, new() { Name = "Find jobs" }).ClickAsync();
                 page.WaitForTimeoutAsync(20000);
 
 

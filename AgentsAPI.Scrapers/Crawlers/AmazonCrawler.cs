@@ -22,14 +22,17 @@ namespace AgentsAPI.Scrapers.Crawlers
 
             try
             {
-                await page.GotoAsync("https://www.amazon.jobs/content/en/teams/amazon-web-services");
+                await page.GotoAsync(
+                    "https://www.amazon.jobs/content/en/teams/amazon-web-services",
+                    new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 120000 });
 
-                page.WaitForTimeoutAsync(1000);
+                await page.WaitForTimeoutAsync(1000);
                 //await page.GetByRole(AriaRole.Link, new() { Name = "View open roles" }).ClickAsync();
-                await page.GotoAsync("https://www.amazon.jobs/en/search?offset=0&result_limit=10&sort=relevant&business_category%5B%5D=amazon-web-services&cmpid=AS_OTAW200199B");
+                await page.GotoAsync(
+                    "https://www.amazon.jobs/en/search?offset=0&result_limit=10&sort=relevant&business_category%5B%5D=amazon-web-services&cmpid=AS_OTAW200199B",
+                    new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 120000 });
 
-                await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-
+                await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
 
                 string currentUrl = page.Url;
 
@@ -52,16 +55,15 @@ namespace AgentsAPI.Scrapers.Crawlers
                             string title = (await link.InnerTextAsync()).Trim();
                             string fullUrl = new Uri(new Uri(page.Url), href).ToString();
                             links.Add((title, fullUrl));
-
                         }
                     }
 
-
-
-
                     foreach (var item in links)
                     {
-                        await page.GotoAsync(item.Url);
+                        await page.GotoAsync(
+                            item.Url,
+                            new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 120000 });
+
                         await page.WaitForTimeoutAsync(1000);
 
                         var jd = new JobDetail();
@@ -74,27 +76,25 @@ namespace AgentsAPI.Scrapers.Crawlers
                                 var categoryLink = page.Locator(".association.job-category-icon a").First;
                                 var categoryAriaLabel = await categoryLink.GetAttributeAsync("aria-label");
                                 jd.Department = categoryAriaLabel?.Replace("Job category ", "").Trim();
-
                             }
                             catch (Exception ex)
                             {
                                 var categoryLink = page.Locator(".association.job-category-icon li").First;
-                                
+
                                 jd.Department = await categoryLink.InnerTextAsync();
                             }
                             var locationText = await page.Locator(".association.location-icon li").First.InnerTextAsync();
                             jd.Location = locationText?.Trim();
-
 
                             var content = page.Locator("div.col-12.col-md-7.col-lg-8.col-xl-9");
 
                             jd.Description = await content.InnerTextAsync();
 
                             // Get basic qualifications
-                            var basicQualSection =  page.Locator(".section:has(h2:text('Basic Qualifications'))").First;
+                            var basicQualSection = page.Locator(".section:has(h2:text('Basic Qualifications'))").First;
                             if (basicQualSection != null)
                             {
-                               jd.Requirements = (await basicQualSection.TextContentAsync())?
+                                jd.Requirements = (await basicQualSection.TextContentAsync())?
                                     .Replace("Basic Qualifications", "").Trim();
                             }
 
@@ -106,8 +106,7 @@ namespace AgentsAPI.Scrapers.Crawlers
                                     .Replace("Preferred Qualifications", "").Trim();
                             }
 
-
-                            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+                            await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
                             results.Add(jd);
                         }
                         catch (Exception ex)
@@ -115,8 +114,12 @@ namespace AgentsAPI.Scrapers.Crawlers
                             // ignore single job failures
                         }
                     }
-                    await page.GotoAsync(currentUrl);
-                    await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+
+                    await page.GotoAsync(
+                        currentUrl,
+                        new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 120000 });
+
+                    await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
                     var isDisabled = await page.IsDisabledAsync(ariaDisabled);
                     if (isDisabled)
                     {
@@ -126,9 +129,9 @@ namespace AgentsAPI.Scrapers.Crawlers
 
                     // Click the button
                     await page.ClickAsync(ariaDisabled);
-                    await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+                    await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
                     currentUrl = page.Url;
-                }               
+                }
             }
             finally
             {

@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -78,7 +79,14 @@ namespace AgentsAPI.CronScheduler
 
                 try
                 {
-                    var crawlerTasks = StartKnownCrawlers(connectionString, stoppingToken).ToArray();
+                    using var playwright = await Playwright.CreateAsync();
+                    await using var browser = await playwright.Chromium.LaunchAsync(
+                        new BrowserTypeLaunchOptions
+                        {
+                            Headless = false,
+                        });
+
+                    var crawlerTasks = StartKnownCrawlers(browser, connectionString, stoppingToken).ToArray();
                     if (crawlerTasks.Length > 0)
                     {
                         _logger.LogInformation("Launching {Count} crawler(s) in parallel", crawlerTasks.Length);
@@ -94,47 +102,36 @@ namespace AgentsAPI.CronScheduler
                     _logger.LogError(ex, "Error running crawler batch");
                 }
 
-                await RunSequentialSiteOptimizations(solutionRoot, stoppingToken);
+                //await RunSequentialSiteOptimizations(solutionRoot, stoppingToken);
             }
 
             _logger.LogInformation("CronBackgroundService stopping.");
         }
 
-        private IEnumerable<Task> StartKnownCrawlers(string connectionString, CancellationToken stoppingToken)
+        private IEnumerable<Task> StartKnownCrawlers(IBrowser browser, string connectionString, CancellationToken stoppingToken)
         {
             return new[]
             {
-                RunCrawlerAsync("Fueled", ctx => AgentsAPI.Scrapers.Crawlers.FueledCrawler.CrawlFueledAsync(ctx), connectionString, stoppingToken),
-                RunCrawlerAsync("AshbyHQ", ctx => AgentsAPI.Scrapers.Crawlers.AshbyhqCrawler.CrawlAshbyhqAsync(ctx), connectionString, stoppingToken),
-                RunCrawlerAsync("Acquia", ctx => AgentsAPI.Scrapers.Crawlers.AcquiaCrawler.CrawlAcquiaAsync(ctx), connectionString, stoppingToken),
-                RunCrawlerAsync("Microsoft", ctx => AgentsAPI.Scrapers.Crawlers.MicrosoftCrawler.CrawlMicrosoftAsync(ctx), connectionString, stoppingToken),
-                RunCrawlerAsync("Amazon", ctx => AgentsAPI.Scrapers.Crawlers.AmazonCrawler.CrawlAmazonAsync(ctx), connectionString, stoppingToken)
+                //RunCrawlerAsync(browser, "Fueled", ctx => AgentsAPI.Scrapers.Crawlers.FueledCrawler.CrawlFueledAsync(ctx), connectionString, stoppingToken),
+                //RunCrawlerAsync(browser, "AshbyHQ", ctx => AgentsAPI.Scrapers.Crawlers.AshbyhqCrawler.CrawlAshbyhqAsync(ctx), connectionString, stoppingToken),
+                //RunCrawlerAsync(browser, "Acquia", ctx => AgentsAPI.Scrapers.Crawlers.AcquiaCrawler.CrawlAcquiaAsync(ctx), connectionString, stoppingToken),
+                RunCrawlerAsync(browser, "Microsoft", ctx => AgentsAPI.Scrapers.Crawlers.MicrosoftCrawler.CrawlMicrosoftAsync(ctx), connectionString, stoppingToken),
+                RunCrawlerAsync(browser, "Amazon", ctx => AgentsAPI.Scrapers.Crawlers.AmazonCrawler.CrawlAmazonAsync(ctx), connectionString, stoppingToken)
             };
         }
 
-        private async Task RunCrawlerAsync(string crawlerName, Func<IBrowserContext, Task<List<JobDetail>>> crawlFunc, string connectionString, CancellationToken stoppingToken)
+        private async Task RunCrawlerAsync(IBrowser browser, string crawlerName, Func<IBrowserContext, Task<List<JobDetail>>> crawlFunc, string connectionString, CancellationToken stoppingToken)
         {
+            var stopwatch = Stopwatch.StartNew();
+            var startedAt = DateTime.UtcNow;
+            var crawlerRunId = Guid.NewGuid();
+
             try
             {
                 stoppingToken.ThrowIfCancellationRequested();
-                _logger.LogInformation("Starting crawler {CrawlerName}", crawlerName);
+                _logger.LogInformation("Starting crawler {CrawlerName} (RunId: {RunId})", crawlerName, crawlerRunId);
 
-                using var playwright = await Playwright.CreateAsync();
-                await using var browser = await playwright.Chromium.LaunchAsync(
-                    new BrowserTypeLaunchOptions
-                    {
-                        Headless = true,
-                    });
-                await using var context = await browser.NewContextAsync();
-                await context.RouteAsync("**/*", route =>
-                {
-                    var type = route.Request.ResourceType;
-                    return type == "image" || type == "font" || type == "media"
-                        ? route.AbortAsync()
-                        : route.ContinueAsync();
-                });
-
-                var jobs = await crawlFunc(context);
+                var jobs = await CrawlWithIsolatedContextAsync(browser, crawlFunc, stoppingToken);
                 if (jobs?.Count > 0)
                 {
                     await using var dbContext = CreateDbContext(connectionString);
@@ -146,14 +143,63 @@ namespace AgentsAPI.CronScheduler
                 {
                     _logger.LogInformation("Crawler {CrawlerName} completed with no jobs", crawlerName);
                 }
+
+                stopwatch.Stop();
+                await SaveCrawlerRunAsync(crawlerRunId, crawlerName, startedAt, DateTime.UtcNow, stopwatch.ElapsedMilliseconds, connectionString);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
                 _logger.LogInformation("Crawler {CrawlerName} canceled", crawlerName);
+                stopwatch.Stop();
+                await SaveCrawlerRunAsync(crawlerRunId, crawlerName, startedAt, DateTime.UtcNow, stopwatch.ElapsedMilliseconds, connectionString);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Crawler {CrawlerName} failed", crawlerName);
+                stopwatch.Stop();
+                await SaveCrawlerRunAsync(crawlerRunId, crawlerName, startedAt, DateTime.UtcNow, stopwatch.ElapsedMilliseconds, connectionString);
+            }
+        }
+
+        private async Task<List<JobDetail>> CrawlWithIsolatedContextAsync(IBrowser browser, Func<IBrowserContext, Task<List<JobDetail>>> crawlFunc, CancellationToken stoppingToken)
+        {
+            await using var context = await browser.NewContextAsync();
+            context.SetDefaultNavigationTimeout(1200000);
+            context.SetDefaultTimeout(1200000);
+            await context.RouteAsync("**/*", route =>
+            {
+                var type = route.Request.ResourceType;
+                return type == "image" || type == "font" || type == "media"
+                    ? route.AbortAsync()
+                    : route.ContinueAsync();
+            });
+
+            stoppingToken.ThrowIfCancellationRequested();
+            return await crawlFunc(context);
+        }
+
+        private async Task SaveCrawlerRunAsync(Guid id, string crawlerName, DateTime startedAt, DateTime completedAt, long durationMs, string connectionString)
+        {
+            try
+            {
+                await using var dbContext = CreateDbContext(connectionString);
+                var crawlerRun = new CrawlerRun
+                {
+                    Id = id,
+                    CrawlerName = crawlerName,
+                    StartedAtUtc = startedAt,
+                    CompletedAtUtc = completedAt,
+                    DurationMs = durationMs
+                };
+
+                dbContext.CrawlerRuns.Add(crawlerRun);
+                await dbContext.SaveChangesAsync();
+
+                _logger.LogInformation("Saved crawler run for {CrawlerName}: Duration {DurationMs}ms", crawlerName, durationMs);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save crawler run for {CrawlerName}", crawlerName);
             }
         }
 

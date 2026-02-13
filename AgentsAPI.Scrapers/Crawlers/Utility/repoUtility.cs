@@ -9,25 +9,12 @@ using System.Threading.Tasks;
 
 namespace AgentsAPI.Scrapers.Crawlers.Utility
 {
-    public class repoUtility
+    public static class repoUtility
     {
-        private readonly JobRepository _jobRepository;
-        private readonly ILogger<repoUtility> _logger;
-        public repoUtility(JobRepository jobRepositoy, ILogger<repoUtility> logger)
+        public static async Task PoliteDelayAsync(int minMs = 400, int maxMs = 900)
         {
-            _jobRepository = jobRepositoy;
-            _logger = logger;
-        }
-        public async  Task InsertJobsByBatch(List<JobDetail> jobs)
-        {
-            try
-            {
-                await _jobRepository.AddOrUpdateAsync(jobs);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
-            }
+            var random = new Random();
+            await Task.Delay(random.Next(minMs, maxMs));
         }
     }
 }

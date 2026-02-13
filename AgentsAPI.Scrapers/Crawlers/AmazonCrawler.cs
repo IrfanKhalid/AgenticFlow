@@ -1,3 +1,4 @@
+using AgentsAPI.Scrapers.Crawlers.Utility;
 using AgentsAPI.Shared.Models;
 using Microsoft.Playwright;
 using System;
@@ -30,8 +31,7 @@ namespace AgentsAPI.Scrapers.Crawlers
                 await page.GotoAsync(
                     "https://www.amazon.jobs/en/search?offset=0&result_limit=10&sort=relevant&business_category%5B%5D=amazon-web-services&cmpid=AS_OTAW200199B");
 
-                await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
-
+                await repoUtility.PoliteDelayAsync(600, 1000);
                 string currentUrl = page.Url;
 
                 var ariaDisabled = "button.btn.circle.right[aria-label='Next page']";
@@ -59,10 +59,9 @@ namespace AgentsAPI.Scrapers.Crawlers
                     foreach (var item in links)
                     {
                         await page.GotoAsync(
-                            item.Url,
-                            new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 120000 });
+                            item.Url);
 
-                        await page.WaitForTimeoutAsync(1000);
+                        await repoUtility.PoliteDelayAsync(300, 700);
 
                         var jd = new JobDetail();
                         try
@@ -114,10 +113,8 @@ namespace AgentsAPI.Scrapers.Crawlers
                     }
 
                     await page.GotoAsync(
-                        currentUrl,
-                        new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 120000 });
-
-                    await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+                        currentUrl);
+                    await repoUtility.PoliteDelayAsync(200, 500);
                     var isDisabled = await page.IsDisabledAsync(ariaDisabled);
                     if (isDisabled)
                     {
@@ -127,7 +124,6 @@ namespace AgentsAPI.Scrapers.Crawlers
 
                     // Click the button
                     await page.ClickAsync(ariaDisabled);
-                    await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
                     currentUrl = page.Url;
                 }
             }

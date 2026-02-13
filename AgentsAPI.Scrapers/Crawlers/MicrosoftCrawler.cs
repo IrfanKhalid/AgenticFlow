@@ -1,3 +1,4 @@
+using AgentsAPI.Scrapers.Crawlers.Utility;
 using AgentsAPI.Shared.Models;
 using Microsoft.Playwright;
 using System;
@@ -24,9 +25,8 @@ namespace AgentsAPI.Scrapers.Crawlers
                 await page.GotoAsync(
                     "https://apply.careers.microsoft.com/careers?query=&location=&start=0");
 
-                await page.WaitForTimeoutAsync(1000);
                 //await page.GetByRole(AriaRole.Button, new() { Name = "Find jobs" }).ClickAsync();
-                await page.WaitForTimeoutAsync(20000);
+                await repoUtility.PoliteDelayAsync(900, 3000);
 
                 var baseUri = "https://apply.careers.microsoft.com";
 
@@ -61,7 +61,7 @@ namespace AgentsAPI.Scrapers.Crawlers
                         var href = await jobLink.GetAttributeAsync("href");
                         await jobLink.ScrollIntoViewIfNeededAsync();
                         await jobLink.ClickAsync();
-                        await page.WaitForTimeoutAsync(1500);
+                        await repoUtility.PoliteDelayAsync(300, 700);
                         try
                         {
                             var jd = new JobDetail();
@@ -93,9 +93,8 @@ namespace AgentsAPI.Scrapers.Crawlers
                             }
                             jd.Description = await page.Locator(".container-3Gm1a").InnerTextAsync();
                             jd.Title = (await page.InnerTextAsync("h2.position-title-3TPtN")).Trim();
-                            await page.WaitForTimeoutAsync(1000);
                             jd.ApplyUrl = baseUri + href;
-                            await page.WaitForTimeoutAsync(600);
+                            await repoUtility.PoliteDelayAsync(300, 700);
                             results.Add(jd);
 
                         }
@@ -105,7 +104,7 @@ namespace AgentsAPI.Scrapers.Crawlers
                         }
                     }
                     await page.Locator("button[aria-label='Next jobs']").ClickAsync();
-                    await page.WaitForTimeoutAsync(4000);
+                    await repoUtility.PoliteDelayAsync(500, 900);
                 }
             }
             finally

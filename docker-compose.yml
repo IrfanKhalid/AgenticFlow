@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agentsdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  webapi:
+    build:
+      context: .
+      dockerfile: AgentsAPI.WebAPI/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - POSTGRES_CONNECTION=Host=postgres;Database=agentsdb;Username=postgres;Password=postgres
+      - ConnectionStrings__Postgres=Host=postgres;Database=agentsdb;Username=postgres;Password=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  cronscheduler:
+    build:
+      context: .
+      dockerfile: AgentsAPI.CronScheduler/Dockerfile
+    restart: unless-stopped
+    environment:
+      - POSTGRES_CONNECTION=Host=postgres;Database=agentsdb;Username=postgres;Password=postgres
+      - CRON_EXPRESSION=0 0 * * *
+      - CRAWL_QUERIES=example
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

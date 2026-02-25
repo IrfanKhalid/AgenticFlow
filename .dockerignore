@@ -1,0 +1,19 @@
+# Ignore build artifacts, bin/obj, IDE files
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/.idea/
+**/node_modules/
+**/Thumbs.db
+**/*.user
+**/*.suo
+**/*.log
+
+# Ignore Playwright browser caches (installed during Docker build)
+**/.playwright/
+
+# Ignore Docker-specific files from build context
+**/Dockerfile
+**/docker-compose*.yml
+**/.dockerignore

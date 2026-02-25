@@ -1,0 +1,62 @@
+name: Deploy .NET Crawler to VPS
+
+on:
+  push:
+    branches: [ scrape1.0 ]  # Trigger on pushes to scrape1.0 branch
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0'  # Match your crawler's .NET version
+      
+      - name: Restore dependencies
+        run: dotnet restore
+      
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+      
+      - name: Publish
+        run: dotnet publish -c Release -o ./publish
+      
+      - name: Create deployment package
+        run: |
+          tar -czf deploy-package.tar.gz -C ./publish .
+      
+      - name: Copy files to VPS via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          source: "deploy-package.tar.gz"
+          target: "/tmp/"
+      
+      - name: Deploy on VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            # Create app directory if it doesn't exist
+            mkdir -p /var/my-crawler
+            
+            # Extract new version
+            cd /tmp
+            tar -xzf deploy-package.tar.gz -C /var/my-crawler/
+            
+            # Restart the service (using supervisor from our previous setup)
+            sudo supervisorctl restart my-crawler
+            
+            # Clean up
+            rm /tmp/deploy-package.tar.gz

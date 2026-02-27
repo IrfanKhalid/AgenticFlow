@@ -15,8 +15,12 @@ namespace AgentsAPI.DataAccess.Models
         {
             var optionsBuilder = new DbContextOptionsBuilder<AgentsDbContext>();
 
-            optionsBuilder.UseNpgsql(
-                "Host=localhost;Port=5432;Database=agentsdb;Username=postgres;Password=postgres");
+            var connectionString =
+                Environment.GetEnvironmentVariable("ConnectionStrings__Postgres")
+                ?? Environment.GetEnvironmentVariable("POSTGRES_CONNECTION")
+                ?? "Host=localhost;Port=5432;Database=agentsdb;Username=postgres;Password=postgres";
+
+            optionsBuilder.UseNpgsql(connectionString);
             return new AgentsDbContext(optionsBuilder.Options);
         }
     }

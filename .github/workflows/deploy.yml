@@ -21,7 +21,7 @@ jobs:
             --exclude='*/bin' \
             --exclude='*.user' \
             --exclude='./deploy-package.tar.gz' \
-            .
+            . || [ $? -eq 1 ]
 
       - name: Copy files to VPS via SCP
         uses: appleboy/scp-action@v0.1.7

@@ -36,11 +36,7 @@ services:
     volumes:
       - .:/src
     working_dir: /src
-    command: >
-      sh -c "dotnet tool install --global dotnet-ef --version 8.0.0 &&
-             /root/.dotnet/tools/dotnet-ef database update
-             --project AgentsAPI.DataAccess
-             --startup-project AgentsAPI.WebAPI"
+    command: sh -c "dotnet tool install --global dotnet-ef --version 8.0.0 && /root/.dotnet/tools/dotnet-ef database update --project AgentsAPI.DataAccess --startup-project AgentsAPI.WebAPI"
     environment:
       - ConnectionStrings__Postgres=Host=postgres;Database=agentsdb;Username=postgres;Password=postgres
     depends_on:

@@ -51,7 +51,7 @@ jobs:
             cd /var/my-crawler
 
             # Start postgres and wait for it to be healthy
-            docker compose up -d postgres
+            # docker compose up -d postgres
             docker compose run --rm migrate
 
             # Build the CronScheduler image and start it

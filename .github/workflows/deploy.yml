@@ -15,7 +15,7 @@ jobs:
 
       - name: Create deployment package
         run: |
-          tar -czf deploy-package.tar.gz \
+          tar -czf /tmp/deploy-package.tar.gz \
             --exclude='.git' \
             --exclude='*/obj' \
             --exclude='*/bin' \
@@ -29,7 +29,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
-          source: "deploy-package.tar.gz"
+          source: "/tmp/deploy-package.tar.gz"
           target: "/tmp/"
 
       - name: Deploy on VPS via SSH

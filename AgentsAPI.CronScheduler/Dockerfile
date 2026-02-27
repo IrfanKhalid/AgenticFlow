@@ -18,7 +18,13 @@ RUN dotnet publish AgentsAPI.CronScheduler/AgentsAPI.CronScheduler.csproj -c Rel
 
 # Install Playwright browsers during build (uses the SDK + node bundled with Playwright)
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN /app/publish/.playwright/node/linux-x64/node /app/publish/.playwright/package/lib/cli/cli.js install --with-deps chromium
+RUN pw_dir="/app/publish/.playwright/node/linux-x64" && \
+    if [ -f "$pw_dir/playwright" ]; then \
+      "$pw_dir/playwright" install --with-deps chromium; \
+    else \
+      cli_js="$(find /app/publish/.playwright -name "cli.js" 2>/dev/null | head -1)" && \
+      "$pw_dir/node" "$cli_js" install --with-deps chromium; \
+    fi
 
 # ---- Runtime stage ----
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime

@@ -120,6 +120,11 @@ namespace AgentsAPI.CronScheduler
             var stopwatch = Stopwatch.StartNew();
             var startedAt = DateTime.UtcNow;
             var crawlerRunId = Guid.NewGuid();
+            var jobs = new List<JobDetail>();
+            string status = "Success";
+            string? errorMessage = null;
+            string? stackTrace = null;
+            int jobsSaved = 0;
 
             try
             {
@@ -133,33 +138,58 @@ namespace AgentsAPI.CronScheduler
                         Headless = true,
                     });
 
-                var jobs = await CrawlWithIsolatedContextAsync(browser, crawlFunc, stoppingToken);
-                if (jobs?.Count > 0)
-                {
-                    await using var dbContext = CreateDbContext(connectionString);
-                    var jobRepository = new JobRepository(dbContext);
-                    await InsertJobsByBatch(jobs, jobRepository);
-                    _logger.LogInformation("Crawler {CrawlerName} completed with {Count} jobs", crawlerName, jobs.Count);
-                }
-                else
-                {
-                    _logger.LogInformation("Crawler {CrawlerName} completed with no jobs", crawlerName);
-                }
-
-                stopwatch.Stop();
-                await SaveCrawlerRunAsync(crawlerRunId, crawlerName, startedAt, DateTime.UtcNow, stopwatch.ElapsedMilliseconds, connectionString);
+                jobs = await CrawlWithIsolatedContextAsync(browser, crawlFunc, stoppingToken);
+                _logger.LogInformation("Crawler {CrawlerName} completed with {Count} jobs", crawlerName, jobs?.Count ?? 0);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
+                status = "Canceled";
                 _logger.LogInformation("Crawler {CrawlerName} canceled", crawlerName);
-                stopwatch.Stop();
-                await SaveCrawlerRunAsync(crawlerRunId, crawlerName, startedAt, DateTime.UtcNow, stopwatch.ElapsedMilliseconds, connectionString);
+                await SaveCrawlerLogAsync(crawlerName, startedAt, stopwatch.ElapsedMilliseconds,
+                    status, jobs?.Count ?? 0, jobsSaved, errorMessage, stackTrace, connectionString);
             }
             catch (Exception ex)
             {
+                status = "Error";
+                errorMessage = ex.Message;
+                stackTrace = ex.StackTrace;
                 _logger.LogError(ex, "Crawler {CrawlerName} failed", crawlerName);
+                await SaveCrawlerLogAsync(crawlerName, startedAt, stopwatch.ElapsedMilliseconds,
+                    status, jobs?.Count ?? 0, jobsSaved, errorMessage, stackTrace, connectionString);
+            }
+            finally
+            {
                 stopwatch.Stop();
+
+                // Always try to save whatever jobs were crawled, even on error
+                if (jobs?.Count > 0)
+                {
+                    try
+                    {
+                        await using var dbContext = CreateDbContext(connectionString);
+                        var jobRepository = new JobRepository(dbContext);
+                        await InsertJobsByBatch(jobs, jobRepository);
+                        jobsSaved = jobs.Count;
+                        _logger.LogInformation("Crawler {CrawlerName}: saved {Count} jobs", crawlerName, jobsSaved);
+                    }
+                    catch (Exception saveEx)
+                    {
+                        _logger.LogError(saveEx, "Crawler {CrawlerName}: failed to save {Count} crawled jobs", crawlerName, jobs.Count);
+                        if (status == "Success") status = "Error";
+                        errorMessage = errorMessage == null
+                            ? $"Save failed: {saveEx.Message}"
+                            : $"{errorMessage} | Save failed: {saveEx.Message}";
+                        await SaveCrawlerLogAsync(crawlerName, startedAt, stopwatch.ElapsedMilliseconds,
+                            status, jobs?.Count ?? 0, jobsSaved, errorMessage, stackTrace, connectionString);
+                    }
+                
+                }
+
+                // Save CrawlerRun (existing table)
                 await SaveCrawlerRunAsync(crawlerRunId, crawlerName, startedAt, DateTime.UtcNow, stopwatch.ElapsedMilliseconds, connectionString);
+
+                // Save CrawlerLog (new table)
+                
             }
         }
 
@@ -202,6 +232,36 @@ namespace AgentsAPI.CronScheduler
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to save crawler run for {CrawlerName}", crawlerName);
+            }
+        }
+
+        private async Task SaveCrawlerLogAsync(string crawlerName, DateTime startedAt, long durationMs,
+            string status, int jobsCrawled, int jobsSaved, string? errorMessage, string? stackTrace, string connectionString)
+        {
+            try
+            {
+                await using var dbContext = CreateDbContext(connectionString);
+                var log = new CrawlerLog
+                {
+                    CrawlerName = crawlerName,
+                    TimestampUtc = startedAt,
+                    DurationMs = durationMs,
+                    Status = status,
+                    JobsCrawled = jobsCrawled,
+                    JobsSaved = jobsSaved,
+                    ErrorMessage = errorMessage,
+                    StackTrace = stackTrace
+                };
+
+                dbContext.CrawlerLogs.Add(log);
+                await dbContext.SaveChangesAsync();
+
+                _logger.LogInformation("Saved crawler log for {CrawlerName}: Status={Status}, Crawled={Crawled}, Saved={Saved}",
+                    crawlerName, status, jobsCrawled, jobsSaved);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save crawler log for {CrawlerName}", crawlerName);
             }
         }
 

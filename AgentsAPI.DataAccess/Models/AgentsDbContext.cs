@@ -11,6 +11,7 @@ namespace AgentsAPI.DataAccess.Models
 
         public DbSet<JobDetail> JobDetails { get; set; } = null!;
         public DbSet<CrawlerRun> CrawlerRuns { get; set; } = null!;
+        public DbSet<CrawlerLog> CrawlerLogs { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -31,6 +32,7 @@ namespace AgentsAPI.DataAccess.Models
                 eb.Property(j => j.Compensation).HasColumnType("text");
                 eb.Property(j => j.StartDate).HasColumnType("date");
                 eb.Property(j => j.Active).HasColumnType("boolean");
+                eb.Property(j => j.IsProcessed).HasDefaultValue(false);
 
             });
 
@@ -41,6 +43,15 @@ namespace AgentsAPI.DataAccess.Models
                 eb.Property(r => r.StartedAtUtc);
                 eb.Property(r => r.CompletedAtUtc);
                 eb.Property(r => r.DurationMs);
+            });
+
+            modelBuilder.Entity<CrawlerLog>(eb =>
+            {
+                eb.HasKey(l => l.Id);
+                eb.Property(l => l.CrawlerName).IsRequired().HasMaxLength(200);
+                eb.Property(l => l.Status).IsRequired().HasMaxLength(50);
+                eb.Property(l => l.ErrorMessage).HasColumnType("text");
+                eb.Property(l => l.StackTrace).HasColumnType("text");
             });
         }
     }

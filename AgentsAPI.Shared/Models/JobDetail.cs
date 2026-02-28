@@ -19,5 +19,6 @@ namespace AgentsAPI.Shared.Models
         public DateTime StartDate { get; set; }
         public bool Active { get; set; } = false;
         public string Department { get; set; } = string.Empty;
+        public bool IsProcessed { get; set; } = false;
     }
 }

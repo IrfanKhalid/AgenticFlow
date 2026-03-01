@@ -20,70 +20,53 @@ namespace AgentsAPI.CronScheduler
     {
         private readonly IServiceProvider _provider;
         private readonly ILogger<CronBackgroundService> _logger;
-        private readonly string _cronExpression;
-        private readonly List<string> _queries;
+        private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(60);
+
         public CronBackgroundService(IServiceProvider provider, ILogger<CronBackgroundService> logger)
         {
             _provider = provider;
             _logger = logger;
-
-            // read configuration from environment variables for easier Windows Scheduler runs
-            // default to once per day at midnight UTC
-
-            _cronExpression = Environment.GetEnvironmentVariable("CRON_EXPRESSION") ?? "0 0 * * *";
-            var queriesRaw = Environment.GetEnvironmentVariable("CRAWL_QUERIES") ?? "example";
-            _queries = queriesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("CronBackgroundService starting with cron '{Cron}' and queries: {Queries}", _cronExpression, _queries);
+            _logger.LogInformation("CronBackgroundService started. Polling every {Interval}s", PollInterval.TotalSeconds);
 
-            var cron = CronExpression.Parse(_cronExpression, CronFormat.Standard);
+            // On startup, reset any IsRunning flags left from a previous crash
+            await ResetStaleRunningFlagsAsync();
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                var next = cron.GetNextOccurrence(DateTime.UtcNow);
-                if (!next.HasValue)
-                {
-                    _logger.LogInformation("No next occurrence from cron expression. Stopping service.");
-                    break;
-                }
-
-                var delay = next.Value - DateTime.UtcNow;
-                if (delay.TotalMilliseconds > 0)
-                {
-                    try
-                    {
-
-                       // await Task.Delay(delay, stoppingToken);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        break;
-                    }
-                }
-
-                _logger.LogInformation("Triggering crawl at {Time}", DateTimeOffset.Now);
-
-                using var scope = _provider.CreateScope();
-
-                // Also get host environment to locate shared files
-                var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
-                var solutionRoot = env.ContentRootPath;
-
-                // Get DB context options and create dbcontext
-
-                var configConn = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
-                var connectionString = configConn ?? "Host=localhost;Database=agentsdb;Username=postgres;Password=postgres";
-
                 try
                 {
-                    var crawlerTasks = StartKnownCrawlers(connectionString, stoppingToken).ToArray();
-                    if (crawlerTasks.Length > 0)
+                    var dueCrawlers = await GetDueCrawlersAsync();
+
+                    if (dueCrawlers.Count > 0)
                     {
-                        _logger.LogInformation("Launching {Count} crawler(s) in parallel", crawlerTasks.Length);
-                        await Task.WhenAll(crawlerTasks);
+                        _logger.LogInformation("Found {Count} crawler(s) due to run: {Names}",
+                            dueCrawlers.Count, string.Join(", ", dueCrawlers.Select(c => c.CrawlerName)));
+
+                        var tasks = new List<Task>();
+                        foreach (var crawler in dueCrawlers)
+                        {
+                            if (!CrawlerRegistry.TryGet(crawler.CrawlerName, out var crawlFunc))
+                            {
+                                _logger.LogWarning("No implementation found for crawler '{Name}', skipping", crawler.CrawlerName);
+                                continue;
+                            }
+
+                            // Try to acquire the lock (atomic UPDATE ... WHERE IsRunning = false)
+                            if (!await TryAcquireLockAsync(crawler.Id))
+                            {
+                                _logger.LogInformation("Crawler '{Name}' is already running, skipping", crawler.CrawlerName);
+                                continue;
+                            }
+
+                            tasks.Add(RunCrawlerWithLockAsync(crawler, crawlFunc, stoppingToken));
+                        }
+
+                        if (tasks.Count > 0)
+                            await Task.WhenAll(tasks);
                     }
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -92,30 +75,139 @@ namespace AgentsAPI.CronScheduler
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error running crawler batch");
+                    _logger.LogError(ex, "Error in scheduler polling loop");
                 }
 
-                //await RunSequentialSiteOptimizations(solutionRoot, stoppingToken);
+                try
+                {
+                    await Task.Delay(PollInterval, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
 
             _logger.LogInformation("CronBackgroundService stopping.");
         }
 
-        private IEnumerable<Task> StartKnownCrawlers(string connectionString, CancellationToken stoppingToken)
+        /// <summary>
+        /// Reads CronCrawlers where IsActive=true, IsRunning=false,
+        /// and the cron expression indicates a run is due based on LastRunTime.
+        /// </summary>
+        private async Task<List<CronCrawler>> GetDueCrawlersAsync()
         {
-            return new[]
-            {
-                RunCrawlerAsync("Fueled", ctx => AgentsAPI.Scrapers.Crawlers.FueledCrawler.CrawlFueledAsync(ctx), connectionString, stoppingToken),
-                RunCrawlerAsync("AshbyHQ", ctx => AgentsAPI.Scrapers.Crawlers.AshbyhqCrawler.CrawlAshbyhqAsync(ctx), connectionString, stoppingToken),
-                RunCrawlerAsync("Acquia", ctx => AgentsAPI.Scrapers.Crawlers.AcquiaCrawler.CrawlAcquiaAsync(ctx), connectionString, stoppingToken),
-                RunCrawlerAsync("Microsoft", ctx => AgentsAPI.Scrapers.Crawlers.MicrosoftCrawler.CrawlMicrosoftAsync(ctx), connectionString, stoppingToken),
-                RunCrawlerAsync("Amazon", ctx => AgentsAPI.Scrapers.Crawlers.AmazonCrawler.CrawlAmazonAsync(ctx), connectionString, stoppingToken),
-                RunCrawlerAsync("Google", ctx => AgentsAPI.Scrapers.Crawlers.GoogleCrawler.CrawlGoogleAsync(ctx), connectionString, stoppingToken)
+            await using var db = CreateDbContext();
+            var activeCrawlers = await db.CronCrawlers
+                .Where(c => c.IsActive && !c.IsRunning)
+                .ToListAsync();
 
-            };
+            var now = DateTime.UtcNow;
+            var due = new List<CronCrawler>();
+
+            foreach (var crawler in activeCrawlers)
+            {
+                try
+                {
+                    var cron = Cronos.CronExpression.Parse(crawler.CronExpression, CronFormat.Standard);
+
+                    // If never run, it's due immediately
+                    if (!crawler.LastRunTime.HasValue)
+                    {
+                        due.Add(crawler);
+                        continue;
+                    }
+
+                    // Find the next occurrence after LastRunTime — if it's in the past or now, it's due
+                    var nextOccurrence = cron.GetNextOccurrence(crawler.LastRunTime.Value);
+                    if (nextOccurrence.HasValue && nextOccurrence.Value <= now)
+                    {
+                        due.Add(crawler);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Invalid cron expression '{Cron}' for crawler '{Name}'",
+                        crawler.CronExpression, crawler.CrawlerName);
+                }
+            }
+
+            return due;
         }
 
-        private async Task RunCrawlerAsync(string crawlerName, Func<IBrowserContext, Task<List<JobDetail>>> crawlFunc, string connectionString, CancellationToken stoppingToken)
+        /// <summary>
+        /// Atomically sets IsRunning=true only if it's currently false.
+        /// Returns true if the lock was acquired (this instance owns execution).
+        /// Uses ExecuteUpdate with a WHERE filter for atomicity.
+        /// </summary>
+        private async Task<bool> TryAcquireLockAsync(Guid crawlerId)
+        {
+            await using var db = CreateDbContext();
+            var rowsAffected = await db.CronCrawlers
+                .Where(c => c.Id == crawlerId && !c.IsRunning)
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsRunning, true));
+
+            return rowsAffected > 0;
+        }
+
+        /// <summary>
+        /// Releases the lock and updates LastRunTime after a crawler completes.
+        /// </summary>
+        private async Task ReleaseLockAsync(Guid crawlerId)
+        {
+            try
+            {
+                await using var db = CreateDbContext();
+                await db.CronCrawlers
+                    .Where(c => c.Id == crawlerId)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(c => c.IsRunning, false)
+                        .SetProperty(c => c.LastRunTime, DateTime.UtcNow));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to release lock for crawler {Id}", crawlerId);
+            }
+        }
+
+        /// <summary>
+        /// On startup, reset any crawlers stuck with IsRunning=true
+        /// (e.g. from a crash or forced shutdown).
+        /// </summary>
+        private async Task ResetStaleRunningFlagsAsync()
+        {
+            try
+            {
+                await using var db = CreateDbContext();
+                var reset = await db.CronCrawlers
+                    .Where(c => c.IsRunning)
+                    .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsRunning, false));
+
+                if (reset > 0)
+                    _logger.LogWarning("Reset {Count} stale IsRunning flag(s) from previous run", reset);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to reset stale running flags on startup");
+            }
+        }
+
+        /// <summary>
+        /// Wraps RunCrawlerAsync with lock acquire/release on the CronCrawler row.
+        /// </summary>
+        private async Task RunCrawlerWithLockAsync(CronCrawler crawler, Func<IBrowserContext, Task<List<JobDetail>>> crawlFunc, CancellationToken stoppingToken)
+        {
+            try
+            {
+                await RunCrawlerAsync(crawler.CrawlerName, crawlFunc, stoppingToken);
+            }
+            finally
+            {
+                await ReleaseLockAsync(crawler.Id);
+            }
+        }
+
+        private async Task RunCrawlerAsync(string crawlerName, Func<IBrowserContext, Task<List<JobDetail>>> crawlFunc, CancellationToken stoppingToken)
         {
             var stopwatch = Stopwatch.StartNew();
             var startedAt = DateTime.UtcNow;
@@ -135,7 +227,7 @@ namespace AgentsAPI.CronScheduler
                 await using var browser = await playwright.Chromium.LaunchAsync(
                     new BrowserTypeLaunchOptions
                     {
-                        Headless = true,
+                        Headless = false,
                     });
 
                 jobs = await CrawlWithIsolatedContextAsync(browser, crawlFunc, stoppingToken);
@@ -145,8 +237,6 @@ namespace AgentsAPI.CronScheduler
             {
                 status = "Canceled";
                 _logger.LogInformation("Crawler {CrawlerName} canceled", crawlerName);
-                await SaveCrawlerLogAsync(crawlerName, startedAt, stopwatch.ElapsedMilliseconds,
-                    status, jobs?.Count ?? 0, jobsSaved, errorMessage, stackTrace, connectionString);
             }
             catch (Exception ex)
             {
@@ -154,8 +244,6 @@ namespace AgentsAPI.CronScheduler
                 errorMessage = ex.Message;
                 stackTrace = ex.StackTrace;
                 _logger.LogError(ex, "Crawler {CrawlerName} failed", crawlerName);
-                await SaveCrawlerLogAsync(crawlerName, startedAt, stopwatch.ElapsedMilliseconds,
-                    status, jobs?.Count ?? 0, jobsSaved, errorMessage, stackTrace, connectionString);
             }
             finally
             {
@@ -166,7 +254,7 @@ namespace AgentsAPI.CronScheduler
                 {
                     try
                     {
-                        await using var dbContext = CreateDbContext(connectionString);
+                        await using var dbContext = CreateDbContext();
                         var jobRepository = new JobRepository(dbContext);
                         await InsertJobsByBatch(jobs, jobRepository);
                         jobsSaved = jobs.Count;
@@ -179,25 +267,23 @@ namespace AgentsAPI.CronScheduler
                         errorMessage = errorMessage == null
                             ? $"Save failed: {saveEx.Message}"
                             : $"{errorMessage} | Save failed: {saveEx.Message}";
-                        await SaveCrawlerLogAsync(crawlerName, startedAt, stopwatch.ElapsedMilliseconds,
-                            status, jobs?.Count ?? 0, jobsSaved, errorMessage, stackTrace, connectionString);
                     }
-                
                 }
 
-                // Save CrawlerRun (existing table)
-                await SaveCrawlerRunAsync(crawlerRunId, crawlerName, startedAt, DateTime.UtcNow, stopwatch.ElapsedMilliseconds, connectionString);
+                // Save CrawlerRun
+                await SaveCrawlerRunAsync(crawlerRunId, crawlerName, startedAt, DateTime.UtcNow, stopwatch.ElapsedMilliseconds);
 
-                // Save CrawlerLog (new table)
-                
+                // Save CrawlerLog
+                await SaveCrawlerLogAsync(crawlerName, startedAt, stopwatch.ElapsedMilliseconds,
+                    status, jobs?.Count ?? 0, jobsSaved, errorMessage, stackTrace);
             }
         }
 
         private async Task<List<JobDetail>> CrawlWithIsolatedContextAsync(IBrowser browser, Func<IBrowserContext, Task<List<JobDetail>>> crawlFunc, CancellationToken stoppingToken)
         {
             await using var context = await browser.NewContextAsync();
-            context.SetDefaultNavigationTimeout(1200000);
-            context.SetDefaultTimeout(1200000);
+            context.SetDefaultNavigationTimeout(60000);
+            context.SetDefaultTimeout(30000);
             await context.RouteAsync("**/*", route =>
             {
                 var type = route.Request.ResourceType;
@@ -210,11 +296,11 @@ namespace AgentsAPI.CronScheduler
             return await crawlFunc(context);
         }
 
-        private async Task SaveCrawlerRunAsync(Guid id, string crawlerName, DateTime startedAt, DateTime completedAt, long durationMs, string connectionString)
+        private async Task SaveCrawlerRunAsync(Guid id, string crawlerName, DateTime startedAt, DateTime completedAt, long durationMs)
         {
             try
             {
-                await using var dbContext = CreateDbContext(connectionString);
+                await using var dbContext = CreateDbContext();
                 var crawlerRun = new CrawlerRun
                 {
                     Id = id,
@@ -236,11 +322,11 @@ namespace AgentsAPI.CronScheduler
         }
 
         private async Task SaveCrawlerLogAsync(string crawlerName, DateTime startedAt, long durationMs,
-            string status, int jobsCrawled, int jobsSaved, string? errorMessage, string? stackTrace, string connectionString)
+            string status, int jobsCrawled, int jobsSaved, string? errorMessage, string? stackTrace)
         {
             try
             {
-                await using var dbContext = CreateDbContext(connectionString);
+                await using var dbContext = CreateDbContext();
                 var log = new CrawlerLog
                 {
                     CrawlerName = crawlerName,
@@ -265,43 +351,13 @@ namespace AgentsAPI.CronScheduler
             }
         }
 
-        private static AgentsDbContext CreateDbContext(string connectionString)
+        private static AgentsDbContext CreateDbContext()
         {
+            var connectionString = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION")
+                ?? "Host=localhost;Database=agentsdb;Username=postgres;Password=postgres";
             var optionsBuilder = new DbContextOptionsBuilder<AgentsDbContext>();
             optionsBuilder.UseNpgsql(connectionString);
             return new AgentsDbContext(optionsBuilder.Options);
-        }
-
-        private async Task RunSequentialSiteOptimizations(string solutionRoot, CancellationToken stoppingToken)
-        {
-            try
-            {
-                await foreach (var site in ScrappingJobs.ReadJobSitesFromShared(solutionRoot).WithCancellation(stoppingToken))
-                {
-                    try
-                    {
-                        _logger.LogInformation("Optimizing crawler for site {Site}", site);
-                        await ScrappingJobs.CrawlSitesAsync(site);
-                    }
-                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                    {
-                        break;
-
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error optimizing crawler for site {Site}", site);
-                    }
-                }
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                // shutting down
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error reading job sites from shared files");
-            }
         }
 
         private async Task InsertJobsByBatch(List<JobDetail> jobs, JobRepository jobRepository)
@@ -324,7 +380,7 @@ namespace AgentsAPI.CronScheduler
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving job {ApplyUrl}", jobs);
+                _logger.LogError(ex, "Error saving jobs");
             }
         }
     }

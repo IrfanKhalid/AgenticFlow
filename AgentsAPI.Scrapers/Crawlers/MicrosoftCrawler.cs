@@ -100,12 +100,16 @@ namespace AgentsAPI.Scrapers.Crawlers
                         }
                         catch (Exception ex)
                         {
-                            // ignore single job failures
+                            Console.WriteLine($"exception:{ex}");
                         }
                     }
                     await page.Locator("button[aria-label='Next jobs']").ClickAsync();
                     await repoUtility.PoliteDelayAsync(500, 900);
                 }
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"exception:{ex}");
             }
             finally
             {

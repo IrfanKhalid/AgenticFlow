@@ -12,6 +12,7 @@ namespace AgentsAPI.DataAccess.Models
         public DbSet<JobDetail> JobDetails { get; set; } = null!;
         public DbSet<CrawlerRun> CrawlerRuns { get; set; } = null!;
         public DbSet<CrawlerLog> CrawlerLogs { get; set; } = null!;
+        public DbSet<CronCrawler> CronCrawlers { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -52,6 +53,15 @@ namespace AgentsAPI.DataAccess.Models
                 eb.Property(l => l.Status).IsRequired().HasMaxLength(50);
                 eb.Property(l => l.ErrorMessage).HasColumnType("text");
                 eb.Property(l => l.StackTrace).HasColumnType("text");
+            });
+
+            modelBuilder.Entity<CronCrawler>(eb =>
+            {
+                eb.HasKey(c => c.Id);
+                eb.Property(c => c.CrawlerName).IsRequired().HasMaxLength(200);
+                eb.Property(c => c.CronExpression).IsRequired().HasMaxLength(100);
+                eb.Property(c => c.IsActive).HasDefaultValue(true);
+                eb.Property(c => c.LastRunTime).HasColumnType("timestamp");
             });
         }
     }

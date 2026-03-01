@@ -62,6 +62,17 @@ namespace AgentsAPI.DataAccess.Models
                 eb.Property(c => c.CronExpression).IsRequired().HasMaxLength(100);
                 eb.Property(c => c.IsActive).HasDefaultValue(true);
                 eb.Property(c => c.LastRunTime).HasColumnType("timestamp");
+                eb.Property(c => c.IsRunning).HasDefaultValue(false);
+
+                // Seed all available crawlers with a daily schedule
+                eb.HasData(
+                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0001-0000-0000-000000000001"), CrawlerName = "Microsoft", CronExpression = "0 0 * * *", IsActive = true },
+                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0002-0000-0000-000000000002"), CrawlerName = "Amazon",    CronExpression = "0 0 * * *", IsActive = true },
+                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0003-0000-0000-000000000003"), CrawlerName = "Google",    CronExpression = "0 0 * * *", IsActive = true },
+                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0004-0000-0000-000000000004"), CrawlerName = "Fueled",    CronExpression = "0 0 * * *", IsActive = true },
+                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0005-0000-0000-000000000005"), CrawlerName = "AshbyHQ",   CronExpression = "0 0 1 * *", IsActive = true },
+                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0006-0000-0000-000000000006"), CrawlerName = "Acquia",    CronExpression = "0 0 1 * *", IsActive = true }
+                );
             });
         }
     }

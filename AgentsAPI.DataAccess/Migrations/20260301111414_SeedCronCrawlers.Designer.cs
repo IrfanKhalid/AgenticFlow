@@ -3,6 +3,7 @@ using System;
 using AgentsAPI.DataAccess.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AgentsAPI.DataAccess.Migrations
 {
     [DbContext(typeof(AgentsDbContext))]
-    partial class AgentsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260301111414_SeedCronCrawlers")]
+    partial class SeedCronCrawlers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -106,11 +109,6 @@ namespace AgentsAPI.DataAccess.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
-                    b.Property<bool>("IsRunning")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
                     b.Property<DateTime?>("LastRunTime")
                         .HasColumnType("timestamp");
 
@@ -124,48 +122,42 @@ namespace AgentsAPI.DataAccess.Migrations
                             Id = new Guid("a1b2c3d4-0001-0000-0000-000000000001"),
                             CrawlerName = "Microsoft",
                             CronExpression = "0 0 * * *",
-                            IsActive = true,
-                            IsRunning = false
+                            IsActive = true
                         },
                         new
                         {
                             Id = new Guid("a1b2c3d4-0002-0000-0000-000000000002"),
                             CrawlerName = "Amazon",
                             CronExpression = "0 0 * * *",
-                            IsActive = true,
-                            IsRunning = false
+                            IsActive = true
                         },
                         new
                         {
                             Id = new Guid("a1b2c3d4-0003-0000-0000-000000000003"),
                             CrawlerName = "Google",
                             CronExpression = "0 0 * * *",
-                            IsActive = true,
-                            IsRunning = false
+                            IsActive = true
                         },
                         new
                         {
                             Id = new Guid("a1b2c3d4-0004-0000-0000-000000000004"),
                             CrawlerName = "Fueled",
                             CronExpression = "0 0 * * *",
-                            IsActive = true,
-                            IsRunning = false
+                            IsActive = true
                         },
                         new
                         {
                             Id = new Guid("a1b2c3d4-0005-0000-0000-000000000005"),
                             CrawlerName = "AshbyHQ",
-                            CronExpression = "0 0 1 * *",
-                            IsActive = true,
-                            IsRunning = false
+                            CronExpression = "0 0 * * *",
+                            IsActive = true
                         },
                         new
                         {
                             Id = new Guid("a1b2c3d4-0006-0000-0000-000000000006"),
                             CrawlerName = "Acquia",
-                            CronExpression = "0 0 1 * *",
-                            IsActive = true,
-                            IsRunning = false
+                            CronExpression = "0 0 * * *",
+                            IsActive = true
                         });
                 });
 

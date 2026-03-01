@@ -9,5 +9,6 @@ namespace AgentsAPI.Shared.Models
         public string CronExpression { get; set; } = null!;
         public bool IsActive { get; set; }
         public DateTime? LastRunTime { get; set; }
+        public bool IsRunning { get; set; } = false;
     }
 }

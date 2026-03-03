@@ -52,11 +52,11 @@ namespace AgentsAPI.Scrapers.Crawlers
 
                     await page.WaitForSelectorAsync("div[data-test-id='job-listing'] a[href]");
 
-                    var count = await page.Locator("div[data-test-id='job-listing'] a[href]:not([aria-roledescription='slide'])").CountAsync();
+                    var count = await page.Locator("div[data-test-id='job-listing'] a[href]:not(.similarJobsCard-1CGdx)").CountAsync();
 
                     for (int i = 0; i < count; i++)
                     {
-                        var jobLink = page.Locator("div[data-test-id='job-listing'] a[href]:not([aria-roledescription='slide'])")
+                        var jobLink = page.Locator("div[data-test-id='job-listing'] a[href]:not(.similarJobsCard-1CGdx)")
                                     .Nth(i);
                         var href = await jobLink.GetAttributeAsync("href");
                         await jobLink.ScrollIntoViewIfNeededAsync();

@@ -12,11 +12,9 @@ builder.Services.AddScoped<AgentsAPI.BusinessLogic.Services.IItemService, Agents
 builder.Services.AddScoped<AgentsAPI.BusinessLogic.Services.ISearchService, AgentsAPI.BusinessLogic.Services.SearchService>();
 
 // Configure Postgres DbContext
-var connectionString = builder.Configuration.GetConnectionString("Postgres") ?? Environment.GetEnvironmentVariable("POSTGRES_CONNECTION") ?? "Host=localhost;Database=agentsdb;Username=postgres;Password=postgres";
-builder.Services.AddDbContext<AgentsDbContext>(options =>
-{
-    options.UseNpgsql(connectionString);
-});
+var connectionString = DbConnectionStringProvider.GetPostgres(
+    builder.Configuration.GetConnectionString("Postgres"));
+builder.Services.AddDbContext<AgentsDbContext>(o => o.UseNpgsql(connectionString));
 
 // Register job repository
 builder.Services.AddScoped<AgentsAPI.DataAccess.Repositories.JobRepository>();

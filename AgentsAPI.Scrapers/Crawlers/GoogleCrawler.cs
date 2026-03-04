@@ -9,7 +9,13 @@ namespace AgentsAPI.Scrapers.Crawlers
 {
     public static class GoogleCrawler
     {
+        #region Constants
+
         private const string BaseUri = "https://www.google.com/about/careers/applications/";
+
+        #endregion
+
+        #region Public API
 
         public static async Task<List<JobDetail>> CrawlGoogleAsync(IBrowserContext browser)
         {
@@ -20,21 +26,24 @@ namespace AgentsAPI.Scrapers.Crawlers
 
             try
             {
-                await page.GotoAsync(
-                    "https://www.google.com/about/careers/applications/jobs/results");
+                #region Initial Navigation
+
+                await page.GotoAsync("https://www.google.com/about/careers/applications/jobs/results");
                 await page.Locator("div.VfPpkd-dgl2Hf-ppHlrf-sM5MNb >> a[href*='jobs/results']").First.ClickAsync();
-                // Wait for the job list to render
-                //await page.WaitForSelectorAsync("li.zE6MFb", new PageWaitForSelectorOptions { Timeout = 60000 });
                 await repoUtility.PoliteDelayAsync(200, 600);
+
+                #endregion
+
                 while (true)
                 {
-                    // Wait for job items on the current page
-                    //await page.WaitForSelectorAsync("ul.uT61wd li.zE6MFb");
-                    // Most reliable - using the parent div that contains both button and link
-                    
-                    // Collect all job link hrefs + titles from the listing sidebar
+                    #region Collect Listing Items
+
                     var jobItems = page.Locator("li.zE6MFb");
                     var count = await jobItems.CountAsync();
+
+                    #endregion
+
+                    #region Process Listing Items
 
                     for (int i = 0; i < count; i++)
                     {
@@ -42,15 +51,13 @@ namespace AgentsAPI.Scrapers.Crawlers
                         {
                             var item = jobItems.Nth(i);
                             var anchor = item.Locator("a.Si6A0c");
+
                             await repoUtility.PoliteDelayAsync(300, 700);
-                            // Click the job item to load its detail in the right pane
                             await anchor.ScrollIntoViewIfNeededAsync();
                             await anchor.ClickAsync();
 
-                            // Wait for the detail pane to load with the job title
                             await page.WaitForSelectorAsync("h2.p1N2lc", new PageWaitForSelectorOptions { Timeout = 30000 });
 
-                            // Verify the detail pane content has updated by checking the data-id matches
                             var dataId = await item.GetAttributeAsync("data-id") ?? "";
                             await page.WaitForSelectorAsync($"div.DkhPwc[data-id='{dataId}']",
                                 new PageWaitForSelectorOptions { Timeout = 15000 });
@@ -59,21 +66,23 @@ namespace AgentsAPI.Scrapers.Crawlers
                             if (!string.IsNullOrEmpty(jd.Title))
                             {
                                 results.Add(jd);
+                                await repoUtility.FlushBatchIfNeededAsync(results, 500);
                             }
                         }
-                        catch(Exception ex)
+                            catch (Exception ex)
                         {
-                            Console.WriteLine($"Error processing job item {i}: {ex.Message}");  
-                            // ignore single job failures, continue to next
+                            Console.WriteLine($"Error processing job item {i}: {ex.Message}");
                         }
                     }
 
-                    // Pagination block replacement
+                    #endregion
+
+                    #region Pagination
+
                     var nextLink = page.Locator("a[aria-label='Go to next page']").Last;
                     if (await nextLink.CountAsync() == 0)
                         break;
 
-                    // Anchor-based disabled check
                     var ariaDisabled = await nextLink.GetAttributeAsync("aria-disabled");
                     if (string.Equals(ariaDisabled, "true", StringComparison.OrdinalIgnoreCase))
                         break;
@@ -96,11 +105,13 @@ namespace AgentsAPI.Scrapers.Crawlers
                     {
                         Timeout = 30000
                     });
+
+                    #endregion
                 }
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 Console.WriteLine(ex.Message);
-                
             }
             finally
             {
@@ -110,15 +121,20 @@ namespace AgentsAPI.Scrapers.Crawlers
             return results;
         }
 
+        #endregion
+
+        #region Private Helpers
+
         private static async Task<JobDetail> ExtractJobDetailAsync(IPage page)
         {
             var jd = new JobDetail();
+
             try
             {
-                // Title: <h2 class="p1N2lc">
+                #region Core Fields
+
                 jd.Title = (await page.Locator("h2.p1N2lc").InnerTextAsync()).Trim();
 
-                // Location: <span class="pwO9Dc vo5qdf"> contains multiple <span class="r0wTof">
                 var locationSpans = page.Locator("span.pwO9Dc.vo5qdf span.r0wTof");
                 var locCount = await locationSpans.CountAsync();
                 var locations = new List<string>();
@@ -130,14 +146,16 @@ namespace AgentsAPI.Scrapers.Crawlers
                 }
                 jd.Location = string.Join("; ", locations);
 
-                // Department / Experience level: <span class="wVSTAb"> (e.g. "Advanced")
                 var levelLocator = page.Locator("span.wVSTAb");
                 if (await levelLocator.CountAsync() > 0)
                 {
                     jd.Department = (await levelLocator.First.InnerTextAsync()).Trim();
                 }
 
-                // Apply URL: <a id="apply-action-button">
+                #endregion
+
+                #region Apply URL
+
                 var applyLink = page.Locator("a#apply-action-button");
                 if (await applyLink.CountAsync() > 0)
                 {
@@ -145,14 +163,16 @@ namespace AgentsAPI.Scrapers.Crawlers
                     jd.ApplyUrl = href.StartsWith("http") ? href : BaseUri + href.TrimStart('.', '/');
                 }
 
-                // Description (About the job): <div class="aG5W3">
+                #endregion
+
+                #region Description and Sections
+
                 var aboutSection = page.Locator("div.aG5W3");
                 if (await aboutSection.CountAsync() > 0)
                 {
                     jd.Description = (await aboutSection.InnerTextAsync()).Trim();
                 }
 
-                // Responsibilities: <div class="BDNOWe">
                 var respSection = page.Locator("div.BDNOWe");
                 if (await respSection.CountAsync() > 0)
                 {
@@ -160,8 +180,6 @@ namespace AgentsAPI.Scrapers.Crawlers
                         .Replace("Responsibilities", "").Trim();
                 }
 
-                // Minimum qualifications (Requirements): content inside <div class="KwJkGe">
-                // after the <h3> "Minimum qualifications:"
                 var minQualHeader = page.Locator("h3:text('Minimum qualifications')");
                 if (await minQualHeader.CountAsync() > 0)
                 {
@@ -172,7 +190,6 @@ namespace AgentsAPI.Scrapers.Crawlers
                     }
                 }
 
-                // Preferred qualifications (Achievements): content after <h3> "Preferred qualifications:"
                 var prefQualHeader = page.Locator("h3:text('Preferred qualifications')");
                 if (await prefQualHeader.CountAsync() > 0)
                 {
@@ -183,7 +200,10 @@ namespace AgentsAPI.Scrapers.Crawlers
                     }
                 }
 
-                // Compensation: extract from the description text if present
+                #endregion
+
+                #region Compensation
+
                 if (!string.IsNullOrEmpty(jd.Description))
                 {
                     var salaryIdx = jd.Description.IndexOf("base salary range", StringComparison.OrdinalIgnoreCase);
@@ -196,16 +216,21 @@ namespace AgentsAPI.Scrapers.Crawlers
                             : salarySnippet.Trim();
                     }
                 }
+
+                #endregion
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error extracting job detail: {ex.Message}");
             }
+
             await repoUtility.PoliteDelayAsync(100, 300);
             jd.Active = true;
             jd.StartDate = DateTime.UtcNow;
 
             return jd;
         }
+
+        #endregion
     }
 }

@@ -3,6 +3,7 @@ using System;
 using AgentsAPI.DataAccess.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AgentsAPI.DataAccess.Migrations
 {
     [DbContext(typeof(AgentsDbContext))]
-    partial class AgentsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260304214644_IncreaseLocationMaxLength")]
+    partial class IncreaseLocationMaxLength
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

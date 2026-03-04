@@ -9,9 +9,15 @@ namespace AgentsAPI.Scrapers.Crawlers
 {
     public static class AmazonCrawler
     {
+        #region Constants
+
         private const int NavTimeout = 30000;
         private const int ShortTimeout = 10000;
         private const int RetryCount = 2;
+
+        #endregion
+
+        #region Public API
 
         public static async Task<List<JobDetail>> CrawlAmazonAsync(IBrowserContext browser)
         {
@@ -22,6 +28,8 @@ namespace AgentsAPI.Scrapers.Crawlers
 
             try
             {
+                #region Initial Navigation
+
                 await NavigateWithRetryAsync(page,
                     "https://www.amazon.jobs/en/search?offset=0&result_limit=10&sort=relevant&business_category%5B%5D=amazon-web-services&cmpid=AS_OTAW200199B");
 
@@ -31,15 +39,18 @@ namespace AgentsAPI.Scrapers.Crawlers
                 string currentUrl = page.Url;
                 var nextSelector = "button.btn.circle.right[aria-label='Next page']";
 
+                #endregion
+
                 while (true)
                 {
-                    // Collect all job links from the current listing page
+                    #region Collect Listing Links
+
                     var links = new List<(string Title, string Url)>();
                     var jobLinks = page.Locator("h3.job-title a.job-link");
                     var seen = new HashSet<string>();
                     var count = await jobLinks.CountAsync();
 
-                    for (int i = 0; i < count; i++)
+                    for (int i = 0; i < count; i++) 
                     {
                         try
                         {
@@ -60,7 +71,10 @@ namespace AgentsAPI.Scrapers.Crawlers
                         }
                     }
 
-                    // Visit each job detail page
+                    #endregion
+
+                    #region Process Job Details
+
                     foreach (var item in links)
                     {
                         try
@@ -130,6 +144,7 @@ namespace AgentsAPI.Scrapers.Crawlers
                             catch { }
 
                             results.Add(jd);
+                            await repoUtility.FlushBatchIfNeededAsync(results, 500);
                         }
                         catch (Exception ex)
                         {
@@ -137,7 +152,10 @@ namespace AgentsAPI.Scrapers.Crawlers
                         }
                     }
 
-                    // Navigate back to the listing page
+                    #endregion
+
+                    #region Pagination
+
                     var backOk = await NavigateWithRetryAsync(page, currentUrl);
                     if (!backOk)
                         break;
@@ -146,7 +164,6 @@ namespace AgentsAPI.Scrapers.Crawlers
                         new PageWaitForSelectorOptions { Timeout = NavTimeout });
                     await repoUtility.PoliteDelayAsync(200, 500);
 
-                    // Check if next page button exists and is enabled
                     var nextButton = page.Locator(nextSelector);
                     if (await nextButton.CountAsync() == 0)
                         break;
@@ -171,6 +188,8 @@ namespace AgentsAPI.Scrapers.Crawlers
                         Console.WriteLine("AmazonCrawler: pagination timed out, stopping.");
                         break;
                     }
+
+                    #endregion
                 }
             }
             catch (Exception ex)
@@ -184,6 +203,10 @@ namespace AgentsAPI.Scrapers.Crawlers
 
             return results;
         }
+
+        #endregion
+
+        #region Private Helpers
 
         /// <summary>
         /// Navigates to a URL with DOMContentLoaded wait and retry logic.
@@ -221,5 +244,7 @@ namespace AgentsAPI.Scrapers.Crawlers
             }
             return false;
         }
+
+        #endregion
     }
 }

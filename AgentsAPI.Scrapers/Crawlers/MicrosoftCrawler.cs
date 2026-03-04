@@ -3,8 +3,6 @@ using AgentsAPI.Shared.Models;
 using Microsoft.Playwright;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
 using System.Threading.Tasks;
 using static System.Net.Mime.MediaTypeNames;
 using static System.Net.WebRequestMethods;
@@ -13,6 +11,8 @@ namespace AgentsAPI.Scrapers.Crawlers
 {
     public static class MicrosoftCrawler
     {
+        #region Public API
+
         public static async Task<List<JobDetail>> CrawlMicrosoftAsync(IBrowserContext browser)
         {
             if (browser == null) throw new ArgumentNullException(nameof(browser));
@@ -22,19 +22,26 @@ namespace AgentsAPI.Scrapers.Crawlers
 
             try
             {
+                #region Initial Navigation
+
                 await page.GotoAsync(
                     "https://apply.careers.microsoft.com/careers?query=&location=&start=0");
 
-                //await page.GetByRole(AriaRole.Button, new() { Name = "Find jobs" }).ClickAsync();
                 await repoUtility.PoliteDelayAsync(900, 3000);
 
                 var baseUri = "https://apply.careers.microsoft.com";
+
+                #endregion
+
+                #region Main Paging Loop
 
                 var ariaDisabled = await page.Locator("button[aria-label='Next jobs']").GetAttributeAsync("aria-disabled");
                 while (ariaDisabled != "true")
                 {
                     ariaDisabled = await page.Locator("button[aria-label='Next jobs']").GetAttributeAsync("aria-disabled");
                     var links = new List<string>();
+
+                    #region Collect Job Links
 
                     var anchors = await page.QuerySelectorAllAsync(
                         "div[data-test-id='job-listing'] a[href]:not([aria-roledescription='slide'])"
@@ -51,8 +58,11 @@ namespace AgentsAPI.Scrapers.Crawlers
                     }
 
                     await page.WaitForSelectorAsync("div[data-test-id='job-listing'] a[href]");
-
                     var count = await page.Locator("div[data-test-id='job-listing'] a[href]:not(.similarJobsCard-1CGdx)").CountAsync();
+
+                    #endregion
+
+                    #region Process Job Details
 
                     for (int i = 0; i < count; i++)
                     {
@@ -62,12 +72,11 @@ namespace AgentsAPI.Scrapers.Crawlers
                         await jobLink.ScrollIntoViewIfNeededAsync();
                         await jobLink.ClickAsync();
                         await repoUtility.PoliteDelayAsync(300, 700);
+
                         try
                         {
                             var jd = new JobDetail();
                             await page.WaitForSelectorAsync(".detailContainer-2qNET");
-
-                            var details = new Dictionary<string, string>();
 
                             var containers = await page.QuerySelectorAllAsync(".detailContainer-2qNET");
 
@@ -78,6 +87,7 @@ namespace AgentsAPI.Scrapers.Crawlers
 
                                 var label = (await labelElement.InnerTextAsync()).Trim();
                                 var value = (await valueElement.InnerTextAsync()).Trim();
+
                                 if (label.Contains("Travel") || label.Contains("Work site"))
                                 {
                                     jd.Location += " " + value;
@@ -91,23 +101,34 @@ namespace AgentsAPI.Scrapers.Crawlers
                                     jd.StartDate = DateTime.Parse(value);
                                 }
                             }
+
                             jd.Description = await page.Locator(".container-3Gm1a").InnerTextAsync();
                             jd.Title = (await page.InnerTextAsync("h2.position-title-3TPtN")).Trim();
                             jd.ApplyUrl = baseUri + href;
+
                             await repoUtility.PoliteDelayAsync(300, 700);
                             results.Add(jd);
-
+                            await repoUtility.FlushBatchIfNeededAsync(results, 500);
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine($"exception:{ex}");
                         }
                     }
+
+                    #endregion
+
+                    #region Pagination
+
                     await page.Locator("button[aria-label='Next jobs']").ClickAsync();
                     await repoUtility.PoliteDelayAsync(500, 900);
+
+                    #endregion
                 }
+
+                #endregion
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine($"exception:{ex}");
             }
@@ -118,5 +139,7 @@ namespace AgentsAPI.Scrapers.Crawlers
 
             return results;
         }
+
+        #endregion
     }
 }

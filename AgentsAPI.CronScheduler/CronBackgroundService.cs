@@ -353,10 +353,8 @@ namespace AgentsAPI.CronScheduler
 
         private static AgentsDbContext CreateDbContext()
         {
-            var connectionString = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION")
-                ?? "Host=localhost;Database=agentsdb;Username=postgres;Password=postgres";
             var optionsBuilder = new DbContextOptionsBuilder<AgentsDbContext>();
-            optionsBuilder.UseNpgsql(connectionString);
+            optionsBuilder.UseNpgsql(DbConnectionStringProvider.GetPostgres());
             return new AgentsDbContext(optionsBuilder.Options);
         }
 

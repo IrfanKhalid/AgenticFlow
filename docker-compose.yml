@@ -1,4 +1,16 @@
 services:
+  postgres:
+    image: postgres:16
+    container_name: mycrawler-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: deployAgentsDB
+      POSTGRES_USER: deployAgentsUser
+      POSTGRES_PASSWORD: 7iz2ZRL+Tkm&qiD
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
   webapi:
     build:
       context: .
@@ -10,7 +22,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__Postgres=Host=host.docker.internal;Database=agentsdb;Username=postgres;Password=postgres
+      - ConnectionStrings__Postgres=Host=host.docker.internal;Database=deployAgentsDB;Username=deployAgentsUser;Password=7iz2ZRL+Tkm&qiD
 
   migrate:
     image: mcr.microsoft.com/dotnet/sdk:9.0
@@ -21,7 +33,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      - ConnectionStrings__Postgres=Host=host.docker.internal;Database=agentsdb;Username=postgres;Password=postgres
+      - ConnectionStrings__Postgres=Host=host.docker.internal;Database=deployAgentsDB;Username=deployAgentsUser;Password=7iz2ZRL+Tkm&qiD
 
   cronscheduler:
     build:
@@ -31,6 +43,6 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      - POSTGRES_CONNECTION=Host=host.docker.internal;Database=agentsdb;Username=postgres;Password=postgres
+      - POSTGRES_CONNECTION=Host=host.docker.internal;Database=deployAgentsDB;Username=deployAgentsUser;Password=7iz2ZRL+Tkm&qiD
       - CRON_EXPRESSION=0 0 * * *
       - CRAWL_QUERIES=example

@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AgentsAPI.BusinessLogic\AgentsAPI.BusinessLogic.csproj" />
+    <ProjectReference Include="..\AgentsAPI.DataAccess\AgentsAPI.DataAccess.csproj" />
     <ProjectReference Include="..\AgentsAPI.Shared\AgentsAPI.Shared.csproj" />
   </ItemGroup>
 

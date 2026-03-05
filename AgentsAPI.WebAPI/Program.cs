@@ -1,5 +1,6 @@
 using AgentsAPI.DataAccess.Models;
 using Microsoft.EntityFrameworkCore;
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +15,9 @@ builder.Services.AddScoped<AgentsAPI.BusinessLogic.Services.ISearchService, Agen
 // Configure Postgres DbContext
 var connectionString = DbConnectionStringProvider.GetPostgres(
     builder.Configuration.GetConnectionString("Postgres"));
+
+
+
 builder.Services.AddDbContext<AgentsDbContext>(o => o.UseNpgsql(connectionString));
 
 // Register job repository
@@ -25,6 +29,12 @@ builder.Services.AddSingleton<AgentsAPI.Agents.ICrawlerAgent>(sp => sp.GetRequir
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AgentsAPI.Agents.CrawlerAgent>());
 
 var app = builder.Build();
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AgentsDbContext>();
+
+    db.Database.Migrate();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

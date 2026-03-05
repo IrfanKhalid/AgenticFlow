@@ -1,4 +1,7 @@
+version: "3.9"
+
 services:
+
   postgres:
     image: postgres:16
     container_name: mycrawler-postgres
@@ -9,40 +12,38 @@ services:
       POSTGRES_PASSWORD: 7iz2ZRL+Tkm&qiD
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deployAgentsUser"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   webapi:
     build:
       context: .
       dockerfile: AgentsAPI.WebAPI/Dockerfile
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__Postgres=Host=host.docker.internal;Database=deployAgentsDB;Username=deployAgentsUser;Password=7iz2ZRL+Tkm&qiD
-
-  migrate:
-    image: mcr.microsoft.com/dotnet/sdk:9.0
-    volumes:
-      - .:/src
-    working_dir: /src
-    command: sh -c "dotnet tool install --global dotnet-ef --version 8.0.0 && /root/.dotnet/tools/dotnet-ef database update --project AgentsAPI.DataAccess --startup-project AgentsAPI.WebAPI"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    environment:
-      - ConnectionStrings__Postgres=Host=host.docker.internal;Database=deployAgentsDB;Username=deployAgentsUser;Password=7iz2ZRL+Tkm&qiD
+      - ConnectionStrings__Postgres=Host=postgres;Port=5432;Database=deployAgentsDB;Username=deployAgentsUser;Password=7iz2ZRL+Tkm&qiD
 
   cronscheduler:
     build:
       context: .
       dockerfile: AgentsAPI.CronScheduler/Dockerfile
     restart: unless-stopped
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
-      - POSTGRES_CONNECTION=Host=host.docker.internal;Database=deployAgentsDB;Username=deployAgentsUser;Password=7iz2ZRL+Tkm&qiD
+      - POSTGRES_CONNECTION=Host=postgres;Port=5432;Database=deployAgentsDB;Username=deployAgentsUser;Password=7iz2ZRL+Tkm&qiD
       - CRON_EXPRESSION=0 0 * * *
       - CRAWL_QUERIES=example
+
+volumes:
+  pgdata:

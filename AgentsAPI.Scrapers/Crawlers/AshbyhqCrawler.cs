@@ -36,7 +36,11 @@ namespace AgentsAPI.Scrapers.Crawlers
                         // navigate to job page
                         await page.GotoAsync(job);
                         
-                        var jd = new JobDetail();
+                        var jd = new JobDetail
+                        {
+                            EffectiveDate = DateTime.UtcNow,
+                            CrawlerName = "AshbyHQ"
+                        };
 
                         // Title
                         jd.Title = await page.Locator("h1.ashby-job-posting-heading").InnerTextAsync();

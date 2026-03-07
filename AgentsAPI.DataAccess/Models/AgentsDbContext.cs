@@ -24,6 +24,7 @@ namespace AgentsAPI.DataAccess.Models
                 eb.Property(j => j.ApplyUrl); // Use ApplyUrl as unique key for now
                 eb.Property(j => j.Title).HasMaxLength(1000);
                 eb.Property(j => j.Location).HasMaxLength(1000);
+                eb.Property(j => j.CrawlerName).HasMaxLength(200);
 
                 // Store long text fields as text
                 eb.Property(j => j.Description).HasColumnType("text");
@@ -34,6 +35,7 @@ namespace AgentsAPI.DataAccess.Models
                 eb.Property(j => j.StartDate).HasColumnType("date");
                 eb.Property(j => j.Active).HasColumnType("boolean");
                 eb.Property(j => j.IsProcessed).HasDefaultValue(false);
+                eb.Property(j => j.EffectiveDate).HasColumnType("timestamp with time zone");
 
             });
 

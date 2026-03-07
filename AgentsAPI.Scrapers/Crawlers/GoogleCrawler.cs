@@ -127,7 +127,11 @@ namespace AgentsAPI.Scrapers.Crawlers
 
         private static async Task<JobDetail> ExtractJobDetailAsync(IPage page)
         {
-            var jd = new JobDetail();
+            var jd = new JobDetail
+            {
+                EffectiveDate = DateTime.UtcNow,
+                CrawlerName = "Google"
+            };
 
             try
             {

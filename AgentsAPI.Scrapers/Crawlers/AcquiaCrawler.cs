@@ -33,7 +33,11 @@ namespace AgentsAPI.Scrapers.Crawlers
                         await page.GotoAsync(job);
                         await page.WaitForTimeoutAsync(700);
 
-                        var jd = new JobDetail();
+                        var jd = new JobDetail
+                        {
+                            EffectiveDate = DateTime.UtcNow,
+                            CrawlerName = "Acquia"
+                        };
 
                         // Title
                         jd.Title = await page.Locator("h1.section-header").InnerTextAsync();

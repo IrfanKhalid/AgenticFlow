@@ -75,7 +75,11 @@ namespace AgentsAPI.Scrapers.Crawlers
 
                         try
                         {
-                            var jd = new JobDetail();
+                            var jd = new JobDetail
+                            {
+                                EffectiveDate = DateTime.UtcNow,
+                                CrawlerName = "Microsoft"
+                            };
                             await page.WaitForSelectorAsync(".detailContainer-2qNET");
 
                             var containers = await page.QuerySelectorAllAsync(".detailContainer-2qNET");

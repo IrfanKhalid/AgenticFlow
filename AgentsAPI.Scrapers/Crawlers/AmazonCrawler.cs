@@ -88,7 +88,9 @@ namespace AgentsAPI.Scrapers.Crawlers
                             var jd = new JobDetail
                             {
                                 Title = item.Title.Trim(),
-                                ApplyUrl = item.Url
+                                ApplyUrl = item.Url,
+                                EffectiveDate = DateTime.UtcNow,
+                                CrawlerName = "Amazon"
                             };
 
                             // Department

@@ -20,5 +20,7 @@ namespace AgentsAPI.Shared.Models
         public bool Active { get; set; } = false;
         public string Department { get; set; } = string.Empty;
         public bool IsProcessed { get; set; } = false;
+        public DateTime EffectiveDate { get; set; } = DateTime.UtcNow;
+        public string CrawlerName { get; set; } = string.Empty;
     }
 }

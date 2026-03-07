@@ -40,7 +40,11 @@ namespace AgentsAPI.Scrapers.Crawlers
                         await page.GotoAsync(job.Url);
                         await page.WaitForSelectorAsync(".entry-content");
 
-                        var jd = new JobDetail();
+                        var jd = new JobDetail
+                        {
+                            EffectiveDate = DateTime.UtcNow,
+                            CrawlerName = "Fueled"
+                        };
 
                         // Title
                         jd.Title = (await page.InnerTextAsync("h1")).Trim();

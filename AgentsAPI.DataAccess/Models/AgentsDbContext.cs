@@ -13,6 +13,7 @@ namespace AgentsAPI.DataAccess.Models
         public DbSet<CrawlerRun> CrawlerRuns { get; set; } = null!;
         public DbSet<CrawlerLog> CrawlerLogs { get; set; } = null!;
         public DbSet<CronCrawler> CronCrawlers { get; set; } = null!;
+        public DbSet<ProcessingJob> ProcessingJobs { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -77,6 +78,23 @@ namespace AgentsAPI.DataAccess.Models
                     new CronCrawler { Id = Guid.Parse("a1b2c3d4-0006-0000-0000-000000000006"), CrawlerName = "Acquia",    CronExpression = "0 0 1 * *", IsActive = true }
                 );
             });
+
+            modelBuilder.Entity<ProcessingJob>(eb =>
+            {
+                eb.HasKey(p => new { p.JobsIds, p.ApplyUrl });
+                eb.Property(p => p.Id);
+                eb.Property(p => p.JobsIds).IsRequired().HasColumnType("text");
+                eb.Property(p => p.Title).IsRequired().HasMaxLength(1000);
+                eb.Property(p => p.Location).IsRequired().HasMaxLength(1000);
+                eb.Property(p => p.Description).HasColumnType("text");
+                eb.Property(p => p.ApplyUrl).IsRequired().HasColumnType("text");
+                eb.Property(p => p.ExecutedAt)
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                    .ValueGeneratedOnAdd();
+            });
         }
     }
 }
+
+

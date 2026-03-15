@@ -37,6 +37,11 @@ namespace AgentsAPI.DataAccess.Models
                 eb.Property(j => j.Active).HasColumnType("boolean");
                 eb.Property(j => j.IsProcessed).HasDefaultValue(false);
                 eb.Property(j => j.EffectiveDate).HasColumnType("timestamp with time zone");
+                eb.Property(j => j.ContentHash)
+                    .HasColumnType("text")
+                    .HasComputedColumnSql(
+                        "md5(concat_ws('|', coalesce(\"Title\", ''), coalesce(\"Description\", ''), coalesce(\"ApplyUrl\", '')))",
+                        stored: true);
 
             });
 
@@ -92,11 +97,6 @@ namespace AgentsAPI.DataAccess.Models
                     .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("CURRENT_TIMESTAMP")
                     .ValueGeneratedOnAdd();
-                eb.Property(p => p.ContentHash)
-                    .HasColumnType("text")
-                    .HasComputedColumnSql(
-                        "md5(concat_ws('|', coalesce(\"Title\", ''), coalesce(\"Description\", ''), coalesce(\"ApplyUrl\", '')))",
-                        stored: true);
             });
         }
     }

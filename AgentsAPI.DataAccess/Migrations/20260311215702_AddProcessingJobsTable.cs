@@ -21,8 +21,7 @@ namespace AgentsAPI.DataAccess.Migrations
                     Location = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
                     Description = table.Column<string>(type: "text", nullable: true),
                     ApplyUrl = table.Column<string>(type: "text", nullable: false),
-                    ExecutedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    ContentHash = table.Column<string>(type: "text", nullable: false, computedColumnSql: "md5(concat_ws('|', coalesce(\"Title\", ''), coalesce(\"Description\", ''), coalesce(\"ApplyUrl\", '')))", stored: true)
+                    ExecutedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP")
                 },
                 constraints: table =>
                 {

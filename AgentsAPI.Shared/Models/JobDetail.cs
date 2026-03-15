@@ -22,5 +22,6 @@ namespace AgentsAPI.Shared.Models
         public bool IsProcessed { get; set; } = false;
         public DateTime EffectiveDate { get; set; } = DateTime.UtcNow;
         public string CrawlerName { get; set; } = string.Empty;
+        public string ContentHash { get; private set; } = string.Empty;
     }
 }

@@ -192,7 +192,7 @@ namespace AgentsAPI.DataAccess.Migrations
                     b.Property<string>("ContentHash")
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("text")
-                        .HasComputedColumnSql("md5(concat_ws('|', coalesce(\"Title\", ''), coalesce(\"Description\", ''), coalesce(\"ApplyUrl\", '')))", true);
+                        .HasComputedColumnSql("md5(coalesce(\"Title\", '') || '|' || coalesce(\"Description\", '') || '|' || coalesce(\"ApplyUrl\", ''))", true);
 
                     b.Property<string>("CrawlerName")
                         .IsRequired()

@@ -40,7 +40,7 @@ namespace AgentsAPI.DataAccess.Models
                 eb.Property(j => j.ContentHash)
                     .HasColumnType("text")
                     .HasComputedColumnSql(
-                        "md5(concat_ws('|', coalesce(\"Title\", ''), coalesce(\"Description\", ''), coalesce(\"ApplyUrl\", '')))",
+                        "md5(coalesce(\"Title\", '') || '|' || coalesce(\"Description\", '') || '|' || coalesce(\"ApplyUrl\", ''))",
                         stored: true);
 
             });
@@ -101,5 +101,6 @@ namespace AgentsAPI.DataAccess.Models
         }
     }
 }
+
 
 

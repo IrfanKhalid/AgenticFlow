@@ -29,7 +29,7 @@ END $$;");
                 table: "JobDetails",
                 type: "text",
                 nullable: false,
-                computedColumnSql: "md5(concat_ws('|', coalesce(\"Title\", ''), coalesce(\"Description\", ''), coalesce(\"ApplyUrl\", '')))",
+                computedColumnSql: "md5(coalesce(\"Title\", '') || '|' || coalesce(\"Description\", '') || '|' || coalesce(\"ApplyUrl\", ''))",
                 stored: true);
         }
 

@@ -92,6 +92,11 @@ namespace AgentsAPI.DataAccess.Models
                     .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("CURRENT_TIMESTAMP")
                     .ValueGeneratedOnAdd();
+                eb.Property(p => p.ContentHash)
+                    .HasColumnType("text")
+                    .HasComputedColumnSql(
+                        "md5(concat_ws('|', coalesce(\"Title\", ''), coalesce(\"Description\", ''), coalesce(\"ApplyUrl\", '')))",
+                        stored: true);
             });
         }
     }

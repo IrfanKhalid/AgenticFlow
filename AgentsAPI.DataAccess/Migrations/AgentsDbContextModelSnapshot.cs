@@ -241,6 +241,11 @@ namespace AgentsAPI.DataAccess.Migrations
                     b.Property<string>("ApplyUrl")
                         .HasColumnType("text");
 
+                    b.Property<string>("ContentHash")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("text")
+                        .HasComputedColumnSql("md5(concat_ws('|', coalesce(\"Title\", ''), coalesce(\"Description\", ''), coalesce(\"ApplyUrl\", '')))", true);
+
                     b.Property<string>("Description")
                         .HasColumnType("text");
 

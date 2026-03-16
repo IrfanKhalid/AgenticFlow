@@ -240,7 +240,7 @@ namespace AgentsAPI.DataAccess.Migrations
 
             modelBuilder.Entity("AgentsAPI.Shared.Models.ProcessingJob", b =>
                 {
-                    b.Property<string>("JobsIds")
+                    b.Property<string>("ContentHash")
                         .HasColumnType("text");
 
                     b.Property<string>("ApplyUrl")
@@ -267,7 +267,7 @@ namespace AgentsAPI.DataAccess.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.HasKey("JobsIds", "ApplyUrl");
+                    b.HasKey("ContentHash");
 
                     b.ToTable("ProcessingJobs");
                 });

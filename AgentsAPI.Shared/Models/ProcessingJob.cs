@@ -5,7 +5,7 @@ namespace AgentsAPI.Shared.Models
     public class ProcessingJob
     {
         public Guid Id { get; set; } = Guid.NewGuid();
-        public string JobsIds { get; set; } = string.Empty;
+        public string ContentHash { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
         public string? Description { get; set; }

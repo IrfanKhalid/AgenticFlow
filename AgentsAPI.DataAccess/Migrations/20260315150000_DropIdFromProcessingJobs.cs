@@ -1,10 +1,14 @@
+using System;
+using AgentsAPI.DataAccess.Models;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace AgentsAPI.DataAccess.Migrations
 {
-    /// <inheritdoc />
+    [DbContext(typeof(AgentsDbContext))]
+    [Migration("20260315150000_DropIdFromProcessingJobs")]
     public partial class DropIdFromProcessingJobs : Migration
     {
         /// <inheritdoc />

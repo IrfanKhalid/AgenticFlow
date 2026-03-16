@@ -254,9 +254,6 @@ namespace AgentsAPI.DataAccess.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasMaxLength(1000)

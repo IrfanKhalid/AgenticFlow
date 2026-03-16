@@ -87,7 +87,6 @@ namespace AgentsAPI.DataAccess.Models
             modelBuilder.Entity<ProcessingJob>(eb =>
             {
                 eb.HasKey(p => p.ContentHash);
-                eb.Property(p => p.Id);
                 eb.Property(p => p.ContentHash).IsRequired().HasColumnType("text");
                 eb.Property(p => p.Title).IsRequired().HasMaxLength(1000);
                 eb.Property(p => p.Location).IsRequired().HasMaxLength(1000);

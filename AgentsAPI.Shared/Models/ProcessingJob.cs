@@ -10,5 +10,6 @@ namespace AgentsAPI.Shared.Models
         public string? Description { get; set; }
         public string ApplyUrl { get; set; } = string.Empty;
         public DateTime ExecutedAt { get; set; }
+        public bool IsProcessd { get; set; } = false;
     }
 }

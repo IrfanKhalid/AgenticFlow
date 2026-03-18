@@ -42,9 +42,11 @@ TestResults/
 .DS_Store
 Thumbs.db
 
-# Playwright
-playwright-report/
-test-results/
+# Playwright generated assets inside build outputs
+**/.playwright/
+**/playwright-report/
+**/test-results/
+**/blob-report/
 /AgentsAPI.BusinessLogic/bin/Debug/net9.0/AgentsAPI.Agents.dll
 /AgentsAPI.BusinessLogic/bin/Debug/net9.0/AgentsAPI.Agents.pdb
 /AgentsAPI.BusinessLogic/bin/Debug/net9.0/AgentsAPI.BusinessLogic.deps.json

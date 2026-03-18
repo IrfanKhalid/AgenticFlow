@@ -96,6 +96,9 @@ namespace AgentsAPI.DataAccess.Models
                     .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("CURRENT_TIMESTAMP")
                     .ValueGeneratedOnAdd();
+                eb.Property(p => p.IsProcessd)
+                    .HasColumnType("boolean")
+                    .HasDefaultValue(false);
             });
         }
     }

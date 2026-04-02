@@ -14,6 +14,7 @@ namespace AgentsAPI.DataAccess.Models
         public DbSet<CrawlerLog> CrawlerLogs { get; set; } = null!;
         public DbSet<CronCrawler> CronCrawlers { get; set; } = null!;
         public DbSet<ProcessingJob> ProcessingJobs { get; set; } = null!;
+        public DbSet<JobFeature> JobFeatures { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -21,13 +22,11 @@ namespace AgentsAPI.DataAccess.Models
 
             modelBuilder.Entity<JobDetail>(eb =>
             {
-                eb.HasKey(j=>j.Id); // No primary key
-                eb.Property(j => j.ApplyUrl); // Use ApplyUrl as unique key for now
+                eb.HasKey(j => j.Id);
+                eb.Property(j => j.ApplyUrl);
                 eb.Property(j => j.Title).HasMaxLength(1000);
                 eb.Property(j => j.Location).HasMaxLength(1000);
                 eb.Property(j => j.CrawlerName).HasMaxLength(200);
-
-                // Store long text fields as text
                 eb.Property(j => j.Description).HasColumnType("text");
                 eb.Property(j => j.Responsibilities).HasColumnType("text");
                 eb.Property(j => j.Achievements).HasColumnType("text");
@@ -42,7 +41,6 @@ namespace AgentsAPI.DataAccess.Models
                     .HasComputedColumnSql(
                         "md5(coalesce(\"Title\", '') || '|' || coalesce(\"Description\", '') || '|' || coalesce(\"ApplyUrl\", ''))",
                         stored: true);
-
             });
 
             modelBuilder.Entity<CrawlerRun>(eb =>
@@ -73,14 +71,13 @@ namespace AgentsAPI.DataAccess.Models
                 eb.Property(c => c.LastRunTime).HasColumnType("timestamp with time zone");
                 eb.Property(c => c.IsRunning).HasDefaultValue(false);
 
-                // Seed all available crawlers with a daily schedule
                 eb.HasData(
                     new CronCrawler { Id = Guid.Parse("a1b2c3d4-0001-0000-0000-000000000001"), CrawlerName = "Microsoft", CronExpression = "0 0 * * *", IsActive = true },
-                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0002-0000-0000-000000000002"), CrawlerName = "Amazon",    CronExpression = "0 0 * * *", IsActive = true },
-                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0003-0000-0000-000000000003"), CrawlerName = "Google",    CronExpression = "0 0 * * *", IsActive = true },
-                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0004-0000-0000-000000000004"), CrawlerName = "Fueled",    CronExpression = "0 0 * * *", IsActive = true },
-                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0005-0000-0000-000000000005"), CrawlerName = "AshbyHQ",   CronExpression = "0 0 1 * *", IsActive = true },
-                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0006-0000-0000-000000000006"), CrawlerName = "Acquia",    CronExpression = "0 0 1 * *", IsActive = true }
+                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0002-0000-0000-000000000002"), CrawlerName = "Amazon", CronExpression = "0 0 * * *", IsActive = true },
+                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0003-0000-0000-000000000003"), CrawlerName = "Google", CronExpression = "0 0 * * *", IsActive = true },
+                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0004-0000-0000-000000000004"), CrawlerName = "Fueled", CronExpression = "0 0 * * *", IsActive = true },
+                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0005-0000-0000-000000000005"), CrawlerName = "AshbyHQ", CronExpression = "0 0 1 * *", IsActive = true },
+                    new CronCrawler { Id = Guid.Parse("a1b2c3d4-0006-0000-0000-000000000006"), CrawlerName = "Acquia", CronExpression = "0 0 1 * *", IsActive = true }
                 );
             });
 
@@ -100,10 +97,42 @@ namespace AgentsAPI.DataAccess.Models
                     .HasColumnType("boolean")
                     .HasDefaultValue(false);
             });
+
+            modelBuilder.Entity<JobFeature>(eb =>
+            {
+                eb.ToTable("JobFeatures");
+                eb.HasKey(j => j.ContentHash);
+                eb.Property(j => j.ContentHash)
+                    .HasColumnName("content_hash")
+                    .IsRequired()
+                    .HasMaxLength(255);
+                eb.Property(j => j.RequiredYears)
+                    .HasColumnName("required_years")
+                    .HasColumnType("integer");
+                eb.Property(j => j.Skills)
+                    .HasColumnName("skills")
+                    .HasColumnType("text");
+                eb.Property(j => j.Tools)
+                    .HasColumnName("tools")
+                    .HasColumnType("text");
+                eb.Property(j => j.CloudDemand)
+                    .HasColumnName("cloud_demand")
+                    .HasColumnType("text");
+                eb.Property(j => j.AiDemand)
+                    .HasColumnName("ai_demand")
+                    .HasColumnType("text");
+                eb.Property(j => j.Salary)
+                    .HasColumnName("salary")
+                    .HasColumnType("text");
+                eb.Property(j => j.HasAi)
+                    .HasColumnName("has_ai")
+                    .HasColumnType("boolean")
+                    .HasDefaultValue(false);
+                eb.Property(j => j.HasCloud)
+                    .HasColumnName("has_cloud")
+                    .HasColumnType("boolean")
+                    .HasDefaultValue(false);
+            });
         }
     }
 }
-
-
-
-

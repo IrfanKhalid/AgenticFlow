@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AgentsAPI.DataAccess.Migrations
 {
     [DbContext(typeof(AgentsDbContext))]
-    [Migration("20260311215702_AddProcessingJobsTable")]
-    partial class AddProcessingJobsTable
+    [Migration("20260319015715_AddJobFeaturesTable")]
+    partial class AddJobFeaturesTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -192,6 +192,12 @@ namespace AgentsAPI.DataAccess.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ContentHash")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("text")
+                        .HasComputedColumnSql("md5(coalesce(\"Title\", '') || '|' || coalesce(\"Description\", '') || '|' || coalesce(\"ApplyUrl\", ''))", true);
+
                     b.Property<string>("CrawlerName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -236,11 +242,58 @@ namespace AgentsAPI.DataAccess.Migrations
                     b.ToTable("JobDetails");
                 });
 
+            modelBuilder.Entity("AgentsAPI.Shared.Models.JobFeature", b =>
+                {
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("content_hash");
+
+                    b.Property<string>("AiDemand")
+                        .HasColumnType("text")
+                        .HasColumnName("ai_demand");
+
+                    b.Property<string>("CloudDemand")
+                        .HasColumnType("text")
+                        .HasColumnName("cloud_demand");
+
+                    b.Property<bool>("HasAi")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("has_ai");
+
+                    b.Property<bool>("HasCloud")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("has_cloud");
+
+                    b.Property<int?>("RequiredYears")
+                        .HasColumnType("integer")
+                        .HasColumnName("required_years");
+
+                    b.Property<string>("Salary")
+                        .HasColumnType("text")
+                        .HasColumnName("salary");
+
+                    b.Property<string>("Skills")
+                        .HasColumnType("text")
+                        .HasColumnName("skills");
+
+                    b.Property<string>("Tools")
+                        .HasColumnType("text")
+                        .HasColumnName("tools");
+
+                    b.HasKey("ContentHash");
+
+                    b.ToTable("JobFeatures", (string)null);
+                });
+
             modelBuilder.Entity("AgentsAPI.Shared.Models.ProcessingJob", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                    b.Property<string>("ContentHash")
+                        .HasColumnType("text");
 
                     b.Property<string>("ApplyUrl")
                         .IsRequired()
@@ -254,9 +307,10 @@ namespace AgentsAPI.DataAccess.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<string>("JobsIds")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<bool>("IsProcessd")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Location")
                         .IsRequired()
@@ -268,7 +322,7 @@ namespace AgentsAPI.DataAccess.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.HasKey("JobsIds", "ApplyUrl");
+                    b.HasKey("ContentHash");
 
                     b.ToTable("ProcessingJobs");
                 });

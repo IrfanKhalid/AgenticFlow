@@ -190,6 +190,7 @@ namespace AgentsAPI.DataAccess.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("ContentHash")
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("text")
                         .HasComputedColumnSql("md5(coalesce(\"Title\", '') || '|' || coalesce(\"Description\", '') || '|' || coalesce(\"ApplyUrl\", ''))", true);
@@ -238,12 +239,61 @@ namespace AgentsAPI.DataAccess.Migrations
                     b.ToTable("JobDetails");
                 });
 
+            modelBuilder.Entity("AgentsAPI.Shared.Models.JobFeature", b =>
+                {
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("content_hash");
+
+                    b.Property<string>("AiDemand")
+                        .HasColumnType("text")
+                        .HasColumnName("ai_demand");
+
+                    b.Property<string>("CloudDemand")
+                        .HasColumnType("text")
+                        .HasColumnName("cloud_demand");
+
+                    b.Property<bool>("HasAi")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("has_ai");
+
+                    b.Property<bool>("HasCloud")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("has_cloud");
+
+                    b.Property<int?>("RequiredYears")
+                        .HasColumnType("integer")
+                        .HasColumnName("required_years");
+
+                    b.Property<string>("Salary")
+                        .HasColumnType("text")
+                        .HasColumnName("salary");
+
+                    b.Property<string>("Skills")
+                        .HasColumnType("text")
+                        .HasColumnName("skills");
+
+                    b.Property<string>("Tools")
+                        .HasColumnType("text")
+                        .HasColumnName("tools");
+
+                    b.HasKey("ContentHash");
+
+                    b.ToTable("JobFeatures", (string)null);
+                });
+
             modelBuilder.Entity("AgentsAPI.Shared.Models.ProcessingJob", b =>
                 {
                     b.Property<string>("ContentHash")
                         .HasColumnType("text");
 
                     b.Property<string>("ApplyUrl")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("Description")

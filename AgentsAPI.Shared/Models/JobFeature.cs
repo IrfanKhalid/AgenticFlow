@@ -4,6 +4,7 @@ namespace AgentsAPI.Shared.Models
     {
         public string ContentHash { get; set; } = string.Empty;
         public int? RequiredYears { get; set; }
+        public string? Keywords { get; set; }
         public string? Skills { get; set; }
         public string? Tools { get; set; }
         public string? CloudDemand { get; set; }

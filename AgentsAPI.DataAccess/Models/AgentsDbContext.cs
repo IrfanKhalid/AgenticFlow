@@ -109,6 +109,9 @@ namespace AgentsAPI.DataAccess.Models
                 eb.Property(j => j.RequiredYears)
                     .HasColumnName("required_years")
                     .HasColumnType("integer");
+                eb.Property(j => j.Keywords)
+                    .HasColumnName("keywords")
+                    .HasColumnType("text");
                 eb.Property(j => j.Skills)
                     .HasColumnName("skills")
                     .HasColumnType("text");

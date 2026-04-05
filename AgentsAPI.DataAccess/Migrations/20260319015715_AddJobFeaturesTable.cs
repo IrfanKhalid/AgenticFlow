@@ -1,5 +1,4 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -11,26 +10,6 @@ namespace AgentsAPI.DataAccess.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropPrimaryKey(
-                name: "PK_ProcessingJobs",
-                table: "ProcessingJobs");
-
-            migrationBuilder.DropColumn(
-                name: "Id",
-                table: "ProcessingJobs");
-
-            migrationBuilder.RenameColumn(
-                name: "JobsIds",
-                table: "ProcessingJobs",
-                newName: "ContentHash");
-
-            migrationBuilder.AddColumn<bool>(
-                name: "IsProcessd",
-                table: "ProcessingJobs",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
-
             migrationBuilder.AddColumn<string>(
                 name: "ContentHash",
                 table: "JobDetails",
@@ -38,11 +17,6 @@ namespace AgentsAPI.DataAccess.Migrations
                 nullable: false,
                 computedColumnSql: "md5(coalesce(\"Title\", '') || '|' || coalesce(\"Description\", '') || '|' || coalesce(\"ApplyUrl\", ''))",
                 stored: true);
-
-            migrationBuilder.AddPrimaryKey(
-                name: "PK_ProcessingJobs",
-                table: "ProcessingJobs",
-                column: "ContentHash");
 
             migrationBuilder.CreateTable(
                 name: "JobFeatures",
@@ -70,34 +44,9 @@ namespace AgentsAPI.DataAccess.Migrations
             migrationBuilder.DropTable(
                 name: "JobFeatures");
 
-            migrationBuilder.DropPrimaryKey(
-                name: "PK_ProcessingJobs",
-                table: "ProcessingJobs");
-
             migrationBuilder.DropColumn(
                 name: "ContentHash",
                 table: "JobDetails");
-
-            migrationBuilder.DropColumn(
-                name: "IsProcessd",
-                table: "ProcessingJobs");
-
-            migrationBuilder.RenameColumn(
-                name: "ContentHash",
-                table: "ProcessingJobs",
-                newName: "JobsIds");
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "Id",
-                table: "ProcessingJobs",
-                type: "uuid",
-                nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
-
-            migrationBuilder.AddPrimaryKey(
-                name: "PK_ProcessingJobs",
-                table: "ProcessingJobs",
-                columns: new[] { "JobsIds", "ApplyUrl" });
         }
     }
 }

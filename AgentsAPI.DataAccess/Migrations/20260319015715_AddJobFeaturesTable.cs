@@ -10,14 +10,6 @@ namespace AgentsAPI.DataAccess.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "ContentHash",
-                table: "JobDetails",
-                type: "text",
-                nullable: false,
-                computedColumnSql: "md5(coalesce(\"Title\", '') || '|' || coalesce(\"Description\", '') || '|' || coalesce(\"ApplyUrl\", ''))",
-                stored: true);
-
             migrationBuilder.CreateTable(
                 name: "JobFeatures",
                 columns: table => new
@@ -43,10 +35,6 @@ namespace AgentsAPI.DataAccess.Migrations
         {
             migrationBuilder.DropTable(
                 name: "JobFeatures");
-
-            migrationBuilder.DropColumn(
-                name: "ContentHash",
-                table: "JobDetails");
         }
     }
 }

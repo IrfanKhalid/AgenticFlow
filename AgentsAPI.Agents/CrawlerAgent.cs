@@ -48,7 +48,7 @@ namespace AgentsAPI.Agents
             try
             {
                 using var playwright = await Playwright.CreateAsync();
-                await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = false });
+                await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
 
                 var reader = _queue.Reader;
 

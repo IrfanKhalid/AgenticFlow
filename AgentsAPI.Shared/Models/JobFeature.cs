@@ -12,5 +12,6 @@ namespace AgentsAPI.Shared.Models
         public string? Salary { get; set; }
         public bool HasAi { get; set; }
         public bool HasCloud { get; set; }
+        public DateTime ExecutedAt { get; set; }
     }
 }

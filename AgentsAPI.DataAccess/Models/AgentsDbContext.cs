@@ -135,6 +135,11 @@ namespace AgentsAPI.DataAccess.Models
                     .HasColumnName("has_cloud")
                     .HasColumnType("boolean")
                     .HasDefaultValue(false);
+                eb.Property(j => j.ExecutedAt)
+                    .HasColumnName("executed_at")
+                    .HasColumnType("timestamp with time zone")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                    .ValueGeneratedOnAdd();
             });
         }
     }

@@ -163,6 +163,10 @@ test-results/
 /AgentsAPI.WebAPI/obj/project.nuget.cache
 /htmlPageData.txt
 /jobData.txt
+.env
+.env.*
+!.env.example
+/secrets/
 /tmpclaude-153d-cwd
 /tmpclaude-1715-cwd
 /tmpclaude-1938-cwd
@@ -180,3 +184,14 @@ test-results/
 /tmpclaude-fd5c-cwd
 /nul
 AgentsAPI.WebAPI/obj/Debug/net9.0/rpswa.dswa.cache.json
+/tmpclaude-016a-cwd
+/tmpclaude-1443-cwd
+/tmpclaude-287e-cwd
+/tmpclaude-49a0-cwd
+/tmpclaude-56cf-cwd
+/tmpclaude-6773-cwd
+/tmpclaude-93ca-cwd
+/tmpclaude-9fc5-cwd
+/tmpclaude-c9ab-cwd
+/tmpclaude-dd61-cwd
+/tmpclaude-ef55-cwd

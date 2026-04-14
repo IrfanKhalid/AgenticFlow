@@ -1,4 +1,7 @@
 version: "3.9"
+# Environment variable defaults (:-fallback) are for local development only.
+# For production, set POSTGRES_DB, POSTGRES_USER, and POSTGRES_PASSWORD
+# via a .env file or your deployment secrets manager.
 
 services:
 
